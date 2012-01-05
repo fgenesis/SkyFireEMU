@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -718,9 +718,9 @@ int32 AuraEffect::CalculateAmount(Unit* caster)
 
                     uint32 spellId = 0;
                     uint32 plrskill = player->GetSkillValue(SKILL_RIDING);
-                    uint32 map = player->GetMapId();
+                    uint32 map = GetVirtualMapForMapAndZone(player->GetMapId(), player->GetZoneId());
                     uint32 maxSkill = 0;
-                    for(int i = 0; i < MAX_MOUNT_TYPE_COLUMN; i++)
+                    for (int i = 0; i < MAX_MOUNT_TYPE_COLUMN; i++)
                     {
                         const MountCapabilityEntry *cap = sMountCapabilityStore.LookupEntry(type->capabilities[i]);
                         if(!cap)
@@ -1290,16 +1290,6 @@ void AuraEffect::PeriodicTick(AuraApplication * aurApp, Unit* caster) const
         case SPELL_AURA_PERIODIC_DAMAGE:
         case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
             HandlePeriodicDamageAurasTick(target, caster);
-
-            /* Dark Evangelism */
-            if (target->HasAura(15407)) //Mind Flay
-            {
-                if (caster->HasAura(81659)) //Rank 1
-                    caster->CastSpell(caster, 87117, true);
-                else
-                    if (caster->HasAura(81662)) //Rank 2
-                        caster->CastSpell(caster, 87118, true);
-            }
             break;
         case SPELL_AURA_PERIODIC_LEECH:
             HandlePeriodicHealthLeechAuraTick(target, caster);
@@ -2009,7 +1999,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
 
         if (PowerType != POWER_MANA)
         {
-            uint32 oldPower = target->GetPower(PowerType);
+            int32 oldPower = target->GetPower(PowerType);
             // reset power to default values only at power change
             if (target->getPowerType() != PowerType)
                 target->setPowerType(PowerType);
@@ -2021,7 +2011,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
                 case FORM_DIREBEAR:
                 {
                     // get furor proc chance
-                    uint32 FurorChance = 0;
+                    int32 FurorChance = 0;
                     if (AuraEffect const* dummy = target->GetDummyAuraEffect(SPELLFAMILY_DRUID, 238, 0))
                         FurorChance = std::max(dummy->GetAmount(), 0);
 
@@ -2036,11 +2026,11 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
                         break;
                         case FORM_BEAR:
                         case FORM_DIREBEAR:
-                        if (urand(0, 99) < FurorChance)
+                        if (irand(0, 99) < FurorChance)
                             target->CastSpell(target, 17057, true);
                         default:
                         {
-                            uint32 newEnergy = std::min(target->GetPower(POWER_ENERGY), FurorChance);
+                            int32 newEnergy = std::min(target->GetPower(POWER_ENERGY), FurorChance);
                             target->SetPower(POWER_ENERGY, newEnergy);
                         }
                         break;
@@ -2564,7 +2554,7 @@ void AuraEffect::HandleAuraModDisarm(AuraApplication const* aurApp, uint8 mode, 
         target->RemoveFlag(field, flag);
 
     // Handle damage modification, shapeshifted druids are not affected
-    if (target->GetTypeId() == TYPEID_PLAYER && !target->IsInFeralForm())
+    if (target->GetTypeId() == TYPEID_PLAYER)
     {
         if (Item* pItem = target->ToPlayer()->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
         {
@@ -2815,10 +2805,22 @@ void AuraEffect::HandleAuraMounted(AuraApplication const* aurApp, uint8 mode, bo
     Unit* target = aurApp->GetTarget();
     uint32 spellId = (uint32)GetAmount();
     Player *player = target->ToPlayer();
-    if(player && spellId < 2)
+
+    switch(GetId())
     {
-        return;
+        case 55164: // Spectral Gryphon
+            spellId = 86460;
+            break;
+        case 64731: // Sea Turtle
+            spellId = 86496;
+            break;
+        default:
+            break;
     }
+
+    if(player && spellId < 2)
+        return;
+
     if (apply)
     {
         uint32 creatureEntry = GetMiscValue();
@@ -2853,6 +2855,9 @@ void AuraEffect::HandleAuraMounted(AuraApplication const* aurApp, uint8 mode, bo
                 displayID = 0;
 
         target->Mount(displayID, ci->VehicleId, GetMiscValue());
+
+        if(player)
+            player->CastSpell(player, spellId, true);
     }
     else
     {
@@ -5485,9 +5490,6 @@ void AuraEffect::HandleAuraDummy(AuraApplication const* aurApp, uint8 mode, bool
 
                     if (apply)
                     {
-                        if (!target->IsInFeralForm())
-                            break;
-
                         int32 bp0 = int32(target->CountPctFromMaxHealth(GetAmount()));
                         target->CastCustomSpell(target, 50322, &bp0, NULL, NULL, true);
                     }

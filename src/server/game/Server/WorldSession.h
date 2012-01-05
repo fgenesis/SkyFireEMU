@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -483,7 +483,6 @@ class WorldSession
         void HandleDelIgnoreOpcode(WorldPacket& recvPacket);
         void HandleSetContactNotesOpcode(WorldPacket& recvPacket);
         void HandleBugOpcode(WorldPacket& recvPacket);
-        void HandleSetAmmoOpcode(WorldPacket& recvPacket);
         void HandleItemNameQueryOpcode(WorldPacket& recvPacket);
 
         void HandleAreaTriggerOpcode(WorldPacket& recvPacket);
@@ -834,6 +833,7 @@ class WorldSession
         void SendLfgTeleportError(uint8 err);
 
         // Arena Team
+        void HandleArenaTeamCreate(WorldPacket& recv_packet);
         void HandleInspectArenaTeamsOpcode(WorldPacket& recv_data);
         void HandleArenaTeamQueryOpcode(WorldPacket& recv_data);
         void HandleArenaTeamRosterOpcode(WorldPacket& recv_data);
@@ -932,7 +932,7 @@ class WorldSession
         QueryCallback<PreparedQueryResult, uint32> _unstablePetCallback;
         QueryCallback<PreparedQueryResult, uint32> _stableSwapCallback;
         QueryCallback<PreparedQueryResult, uint64> _sendStabledPetCallback;
-        QueryCallback<PreparedQueryResult, CharacterCreateInfo*> _charCreateCallback;
+        QueryCallback<PreparedQueryResult, CharacterCreateInfo*, true> _charCreateCallback;
         QueryResultHolderFuture _charLoginCallback;
 
     private:

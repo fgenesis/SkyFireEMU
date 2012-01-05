@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,9 +16,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-// NOTES
-// Remove references to "sTeamContributionPointsStore"
 
 #include "DBCStores.h"
 #include "Log.h"
@@ -123,6 +120,7 @@ DBCStorage <ItemDamageEntry>              sItemDamageThrownStore(ItemDamagefmt);
 DBCStorage <ItemDamageEntry>              sItemDamageTwoHandStore(ItemDamagefmt);
 DBCStorage <ItemDamageEntry>              sItemDamageTwoHandCasterStore(ItemDamagefmt);
 DBCStorage <ItemDamageEntry>              sItemDamageWandStore(ItemDamagefmt);
+DBCStorage <ItemDisenchantLootEntry>      sItemDisenchantLootStore(ItemDisenchantLootfmt);
 //DBCStorage <ItemDisplayInfoEntry>         sItemDisplayInfoStore(ItemDisplayTemplateEntryfmt); -- not used currently
 DBCStorage <ItemExtendedCostEntry>        sItemExtendedCostStore(ItemExtendedCostEntryfmt);
 DBCStorage <ItemLimitCategoryEntry>       sItemLimitCategoryStore(ItemLimitCategoryEntryfmt);
@@ -220,7 +218,6 @@ DBCStorage <TaxiPathEntry> sTaxiPathStore(TaxiPathEntryfmt);
 TaxiPathNodesByPath sTaxiPathNodesByPath;
 static DBCStorage <TaxiPathNodeEntry> sTaxiPathNodeStore(TaxiPathNodeEntryfmt);
 
-//DBCStorage <TeamContributionPointsEntry> sTeamContributionPointsStore(TeamContributionPointsfmt);
 DBCStorage <TotemCategoryEntry> sTotemCategoryStore(TotemCategoryEntryfmt);
 DBCStorage <VehicleEntry> sVehicleStore(VehicleEntryfmt);
 DBCStorage <VehicleSeatEntry> sVehicleSeatStore(VehicleSeatEntryfmt);
@@ -243,47 +240,45 @@ static bool LoadDBC_assert_print(uint32 fsize, uint32 rsize, const std::string& 
 }
 
 template<class T>
-inline void LoadDBC(uint32& availableDbcLocales, StoreProblemList& errlist, DBCStorage<T>& storage, const std::string& dbc_path, const std::string& filename, const std::string * custom_entries = NULL, const std::string * idname = NULL)
+inline void LoadDBC(uint32& availableDbcLocales, StoreProblemList& errors, DBCStorage<T>& storage, const std::string& dbcPath, const std::string& filename, std::string const* customFormat = NULL, std::string const* customIndexName = NULL)
 {
     // compatibility format and C++ structure sizes
-    if (!(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()) == sizeof(T) || LoadDBC_assert_print(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()), sizeof(T), filename)))
-        return;
+    ASSERT(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()) == sizeof(T) || LoadDBC_assert_print(DBCFileLoader::GetFormatRecordSize(storage.GetFormat()), sizeof(T), filename));
 
     ++DBCFileCount;
-    std::string dbc_filename = dbc_path + filename;
-    SqlDbc * sql = NULL;
-    if (custom_entries)
-        sql = new SqlDbc(&filename, custom_entries, idname, storage.GetFormat());
+    std::string dbcFilename = dbcPath + filename;
+    SqlDbc* sql = NULL;
+    if (customFormat)
+        sql = new SqlDbc(&filename, customFormat, customIndexName, storage.GetFormat());
 
-    if (storage.Load(dbc_filename.c_str(), sql))
+    if (storage.Load(dbcFilename.c_str(), sql))
     {
-        for (uint8 loc = 1; loc < TOTAL_LOCALES; ++loc)
+        for (uint8 i = 0; i < TOTAL_LOCALES; ++i)
         {
-            if (!(availableDbcLocales & (1 << loc)))
+            if (!(availableDbcLocales & (1 << i)))
                 continue;
 
-            std::string localizedFileName = dbc_path + localeNames[loc] + "/" + filename;
-            if (!storage.LoadStringsFrom(localizedFileName.c_str(), loc))
-                availableDbcLocales &= ~(1<<loc);             // mark locale as not available
+            std::string localizedName(dbcPath);
+            localizedName.append(localeNames[i]);
+            localizedName.push_back('/');
+            localizedName.append(filename);
+
+            if (!storage.LoadStringsFrom(localizedName.c_str()))
+                availableDbcLocales &= ~(1<<i);             // mark as not available for speedup next checks
         }
     }
     else
     {
         // sort problematic dbc to (1) non compatible and (2) non-existed
-        FILE * f=fopen(dbc_filename.c_str(), "rb");
-        if (f)
+        if (FILE* f = fopen(dbcFilename.c_str(), "rb"))
         {
-            printf("Can't LOAD dbc %s !\n", dbc_filename.c_str());
             char buf[100];
-            snprintf(buf, 100, " (exist, but have %d fields instead " SIZEFMTD ") Wrong client version DBC file?", storage.GetFieldCount(), strlen(storage.GetFormat()));
-            errlist.push_back(dbc_filename + buf);
+            snprintf(buf, 100, " (exists, but has %u fields instead of " SIZEFMTD ") Possible wrong client version.", storage.GetFieldCount(), strlen(storage.GetFormat()));
+            errors.push_back(dbcFilename + buf);
             fclose(f);
         }
         else
-        {
-            printf("Can't OPEN dbc %s !\n", dbc_filename.c_str());
-            errlist.push_back(dbc_filename);
-        }
+            errors.push_back(dbcFilename);
     }
 
     delete sql;
@@ -293,7 +288,7 @@ void LoadDBCStores(const std::string& dataPath, uint32& availableDbcLocales)
 {
     uint32 oldMSTime = getMSTime();
 
-    std::string dbcPath = dataPath+"dbc/";
+    std::string dbcPath = dataPath +"dbc/";
 
     StoreProblemList bad_dbc_files;
 
@@ -379,6 +374,7 @@ void LoadDBCStores(const std::string& dataPath, uint32& availableDbcLocales)
     LoadDBC(availableDbcLocales, bad_dbc_files, sGtChanceToSpellCritBaseStore, dbcPath, "gtChanceToSpellCritBase.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sGtChanceToSpellCritStore,    dbcPath, "gtChanceToSpellCrit.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sGtOCTClassCombatRatingScalarStore,    dbcPath, "gtOCTClassCombatRatingScalar.dbc");
+    LoadDBC(availableDbcLocales, bad_dbc_files, sGtSpellScalingStore, dbcPath, "gtSpellScaling.dbc");
     //LoadDBC(availableDbcLocales, bad_dbc_files, sGtOCTRegenHPStore,           dbcPath, "gtOCTRegenHP.dbc");
     //LoadDBC(dbcCount, availableDbcLocales, bad_dbc_files, sGtOCTRegenMPStore,           dbcPath, "gtOCTRegenMP.dbc");       -- not used currently
     //LoadDBC(availableDbcLocales, bad_dbc_files, sGtRegenHPPerSptStore,        dbcPath, "gtRegenHPPerSpt.dbc");
@@ -395,6 +391,20 @@ void LoadDBCStores(const std::string& dataPath, uint32& availableDbcLocales)
     LoadDBC(availableDbcLocales, bad_dbc_files, sItemRandomSuffixStore,       dbcPath, "ItemRandomSuffix.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sItemSetStore,                dbcPath, "ItemSet.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sItemReforgeStore,            dbcPath, "ItemReforge.dbc");
+
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemArmorQualityStore,       dbcPath, "ItemArmorQuality.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemArmorShieldStore,        dbcPath, "ItemArmorShield.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemArmorTotalStore,         dbcPath, "ItemArmorTotal.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageAmmoStore,         dbcPath, "ItemDamageAmmo.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageOneHandStore,      dbcPath, "ItemDamageOneHand.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageOneHandCasterStore,dbcPath, "ItemDamageOneHandCaster.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageRangedStore,       dbcPath, "ItemDamageRanged.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageThrownStore,       dbcPath, "ItemDamageThrown.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageTwoHandStore,      dbcPath, "ItemDamageTwoHand.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageTwoHandCasterStore,dbcPath, "ItemDamageTwoHandCaster.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDamageWandStore,         dbcPath, "ItemDamageWand.dbc");//14545
+    LoadDBC(availableDbcLocales, bad_dbc_files, sItemDisenchantLootStore,     dbcPath, "ItemDisenchantLoot.dbc");
+
     LoadDBC(availableDbcLocales, bad_dbc_files, sLFGDungeonStore,             dbcPath, "LFGDungeons.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sLockStore,                   dbcPath, "Lock.dbc");
 
@@ -553,14 +563,13 @@ void LoadDBCStores(const std::string& dataPath, uint32& availableDbcLocales)
         if (TaxiPathNodeEntry const* entry = sTaxiPathNodeStore.LookupEntry(i))
             sTaxiPathNodesByPath[entry->path].set(entry->index, entry);
 
-    //LoadDBC(availableDbcLocales, bad_dbc_files, sTeamContributionPointsStore, dbcPath, "TeamContributionPoints.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sTotemCategoryStore,          dbcPath, "TotemCategory.dbc");
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sVehicleStore,                dbcPath, "Vehicle.dbc");
     LoadDBC(availableDbcLocales, bad_dbc_files, sVehicleSeatStore,            dbcPath, "VehicleSeat.dbc");
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sWMOAreaTableStore,           dbcPath, "WMOAreaTable.dbc");
-    for(uint32 i = 0; i < sWMOAreaTableStore.GetNumRows(); ++i)
+    for (uint32 i = 0; i < sWMOAreaTableStore.GetNumRows(); ++i)
     {
         if (WMOAreaTableEntry const* entry = sWMOAreaTableStore.LookupEntry(i))
         {
@@ -620,7 +629,7 @@ char const* GetPetName(uint32 petfamily, uint32 dbclang)
     CreatureFamilyEntry const* pet_family = sCreatureFamilyStore.LookupEntry(petfamily);
     if (!pet_family)
         return NULL;
-    return pet_family->Name[dbclang] ? pet_family->Name[dbclang] : NULL;
+    return pet_family->Name ? pet_family->Name : NULL;
 }
 
 TalentSpellPos const* GetTalentSpellPos(uint32 spellId)

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -3128,6 +3128,8 @@ void SpellMgr::LoadSpellCustomAttr()
                 spellInfo->MaxAffectedTargets = 1;
                 spellInfo->Effects[0].TriggerSpell = 33760;
                 break;
+            case 83359: // Sic 'Em Rank 1
+            case 89388: // Sic 'Em Rank 2
             case 17941: // Shadow Trance
             case 22008: // Netherwind Focus
             case 31834: // Light's Grace
@@ -3201,7 +3203,7 @@ void SpellMgr::LoadSpellCustomAttr()
                break;
             case 19465: // Improved Stings (Rank 2)
                 spellInfo->Effects[EFFECT_2].TargetA = TARGET_UNIT_CASTER;
-                break;			   
+                break;
             case 30421: // Nether Portal - Perseverance
                 spellInfo->Effects[2].BasePoints += 30000;
                 break;

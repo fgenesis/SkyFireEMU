@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1384,17 +1384,20 @@ void World::SetInitialWorldSettings()
     sLog->outString("Loading Item Random Enchantments Table...");
     LoadRandomEnchantmentsTable();
 
-    sLog->outString("Loading Disables");
+    sLog->outString("Loading Disables...");
     DisableMgr::LoadDisables();                                  // must be before loading quests and items
 
     sLog->outString("Loading Items...");                         // must be after LoadRandomEnchantmentsTable and LoadPageTexts
     sObjectMgr->LoadItemTemplates();
 
-    sLog->outString("Loading Item set names...");                // must be after LoadItemPrototypes
-    sObjectMgr->LoadItemSetNames();
+    sLog->outString("Loading Item Extra Data...");              // must be after LoadItemPrototypes
+    sObjectMgr->LoadItemTemplateAddon();
 
-    //sLog->outString("Loading Items Info...");
-    //sItemInfoMgr->LoadItemInfo();
+    sLog->outString("Loading Item Scripts...");                 // must be after LoadItemPrototypes
+    sObjectMgr->LoadItemScriptNames();
+
+    sLog->outString("Loading Item set names...");               // must be after LoadItemPrototypes
+    sObjectMgr->LoadItemSetNames();
 
     sLog->outString("Loading Creature Model Based Info Data...");
     sObjectMgr->LoadCreatureModelInfo();
@@ -1817,7 +1820,7 @@ void World::DetectDBCLang()
     uint8 default_locale = TOTAL_LOCALES;
     for (uint8 i = default_locale -1; i < TOTAL_LOCALES; --i)  // -1 will be 255 due to uint8
     {
-        if (race->name[i][0] != '\0')                     // check by race names
+        if (race->name != '\0')                     // check by race names
         {
             default_locale = i;
             m_availableDbcLocaleMask |= (1 << i);
@@ -2839,7 +2842,9 @@ void World::SetPlayerSecurityLimit(AccountTypes _sec)
 
 void World::ResetWeeklyQuests()
 {
-    CharacterDatabase.Execute("DELETE FROM character_queststatus_weekly");
+    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_QUEST_STATUS_WEEKLY);
+    CharacterDatabase.Execute(stmt);
+
     for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
         if (itr->second->GetPlayer())
             itr->second->GetPlayer()->ResetWeeklyQuestStatus();
@@ -2854,7 +2859,10 @@ void World::ResetWeeklyQuests()
 void World::ResetRandomBG()
 {
     sLog->outDetail("Random BG status reset for all characters.");
-    CharacterDatabase.Execute("DELETE FROM character_battleground_random");
+
+    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_BATTLEGROUND_RANDOM);
+    CharacterDatabase.Execute(stmt);
+
     for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
         if (itr->second->GetPlayer())
             itr->second->GetPlayer()->SetRandomWinner(false);

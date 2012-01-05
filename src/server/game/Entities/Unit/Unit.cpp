@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -789,7 +789,7 @@ uint32 Unit::DealDamage(Unit* victim, uint32 damage, CleanDamage const* cleanDam
 
             // call before auras are removed
             if (Player* killer = GetCharmerOrOwnerPlayerOrPlayerItself())
-                killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, victim);
+                killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, victim);
         }
 
         Kill(victim, durabilityLoss);
@@ -2743,8 +2743,8 @@ float Unit::GetUnitBlockChance() const
     {
         if (player->CanBlock())
         {
-            Item* tmpitem = player->GetShield(true);
-            if (tmpitem)
+            Item* tmpitem = player->GetUseableItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
+            if (tmpitem && !tmpitem->IsBroken())
                 return GetFloatValue(PLAYER_BLOCK_PERCENTAGE);
         }
         // is player but has no block ability or no not broken shield equipped
@@ -2828,9 +2828,6 @@ uint32 Unit::GetWeaponSkillValue (WeaponAttackType attType, Unit const* target) 
         // feral or unarmed skill only for base attack
         if (attType != BASE_ATTACK && !item)
             return 0;
-
-        if (IsInFeralForm())
-            return GetMaxSkillValueForLevel();              // always maximized SKILL_FERAL_COMBAT in fact
 
         // weapon skill or (unarmed for base attack and fist weapons)
         uint32 skill;
@@ -6650,6 +6647,15 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
         {
             switch (dummySpell->SpellIconID)
             {
+                case 3524: // Marked for Death
+                {
+                    if(!roll_chance_i(triggerAmount))
+                        return false;
+                        
+                    triggered_spell_id = 88691;
+                    target = victim;
+                    break;
+                }
                 case 267: // Improved Mend Pet
                 {
                     int32 chance = triggeredByAura->GetSpellInfo()->Effects[triggeredByAura->GetEffIndex()].CalcValue();
@@ -6714,20 +6720,6 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                     }
                     break;
                 }
-                // Sic 'Em!
-                case 83340:
-                {
-                    triggered_spell_id = 83359;
-                    target = this;
-                    break;
-                }
-                // Sic 'Em!
-                case 83356:
-                {
-                    triggered_spell_id = 89388;
-                    target = this;
-                    break;
-                }
                 case 3579: // Lock and Load
                 {
                     // Proc only from periodic (from trap activation proc another aura of this spell)
@@ -6751,6 +6743,20 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                 {
                     victim->CastSpell(victim, 57894, true, NULL, NULL, GetGUID());
                     return true;
+                }
+                // Sic 'Em! rank 1
+                case 83340:
+                {
+                    triggered_spell_id = 83359;
+                    target = this;
+                    break;
+                }
+                // Sic 'Em! rank 2
+                case 83356:
+                {
+                    triggered_spell_id = 89388;
+                    target = this;
+                    break;
                 }
             }
             break;
@@ -8716,7 +8722,7 @@ bool Unit::HandleProcTriggerSpell(Unit* victim, uint32 damage, AuraEffect* trigg
 
             ItemTemplate const* weapon = item->GetTemplate();
 
-            float weaponDPS = weapon->getDPS();
+            float weaponDPS = weapon->DPS;
             float attackPower = GetTotalAttackPowerValue(BASE_ATTACK) / 14.0f;
             float weaponSpeed = float(weapon->Delay) / 1000.0f;
             basepoints0 = int32((weaponDPS + attackPower) * weaponSpeed);
@@ -10193,15 +10199,15 @@ int32 Unit::DealHeal(Unit* victim, uint32 addhealth)
 
         // use the actual gain, as the overheal shall not be counted, skip gain 0 (it ignored anyway in to criteria)
         if (gain)
-            player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, gain, 0, victim);
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, gain, 0, victim);
 
-        player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth);
     }
 
     if (Player* player = victim->ToPlayer())
     {
-        player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_HEALING_RECEIVED, gain);
-        player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEALING_RECEIVED, addhealth);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_HEALING_RECEIVED, gain);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEALING_RECEIVED, addhealth);
     }
 
     return gain;
@@ -11695,29 +11701,6 @@ void Unit::MeleeDamageBonus(Unit* victim, uint32 *pdamage, WeaponAttackType attT
                     AddPctF(DoneTotalMod, (*i)->GetSpellInfo()->GetRank() * 2.0f);
                 break;
             }
-            // Marked for Death
-            case 7598:
-            case 7599:
-            case 7600:
-            case 7601:
-            case 7602:
-            {
-                if (victim->GetAuraEffect(SPELL_AURA_MOD_STALKED, SPELLFAMILY_HUNTER, 0x400, 0, 0))
-                    AddPctN(DoneTotalMod, (*i)->GetAmount());
-                break;
-            }
-            // Dirty Deeds
-            case 6427:
-            case 6428:
-            {
-                if (victim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, spellProto, this))
-                {
-                    // effect 0 have expected value but in negative state
-                    int32 bonus = -(*i)->GetBase()->GetEffect(0)->GetAmount();
-                    AddPctN(DoneTotalMod, bonus);
-                }
-                break;
-            }
         }
     }
 
@@ -11762,33 +11745,30 @@ void Unit::MeleeDamageBonus(Unit* victim, uint32 *pdamage, WeaponAttackType attT
         }
     }
 
-    // .. taken pct: dummy auras
-    AuraEffectList const& mDummyAuras = victim->GetAuraEffectsByType(SPELL_AURA_DUMMY);
-    for (AuraEffectList::const_iterator i = mDummyAuras.begin(); i != mDummyAuras.end(); ++i)
+    // Check for bonus data
+    if(spellProto)
     {
-        switch ((*i)->GetSpellInfo()->SpellIconID)
+        SpellBonusEntry const* bonus = sSpellMgr->GetSpellBonusData(spellProto->Id);
+        if (bonus)
         {
-            // Cheat Death
-            case 2109:
-                if ((*i)->GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL)
+            if (damagetype == DOT)
+            {
+                if (bonus->ap_dot_bonus > 0)
                 {
-                    /*if (victim->GetTypeId() != TYPEID_PLAYER)
-                        continue;
-                    float mod = victim->ToPlayer()->GetRatingBonusValue(CR_CRIT_TAKEN_MELEE) * (-8.0f);
-                    AddPctF(TakenTotalMod, std::max(mod, float((*i)->GetAmount())));*/
+                    float APbonus = GetTotalAttackPowerValue(attType);
+                    DoneFlatBenefit += int32(bonus->ap_dot_bonus * APbonus);
                 }
-                break;
+            }
+            else
+            {
+                if (bonus->ap_bonus > 0)
+                {
+                    float APbonus = GetTotalAttackPowerValue(attType);
+                    DoneFlatBenefit += int32(bonus->ap_bonus * APbonus);
+                }
+            }
         }
     }
-
-    // .. taken pct: class scripts
-    /*AuraEffectList const& mclassScritAuras = GetAuraEffectsByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-    for (AuraEffectList::const_iterator i = mclassScritAuras.begin(); i != mclassScritAuras.end(); ++i)
-    {
-        switch ((*i)->GetMiscValue())
-        {
-        }
-    }*/
 
     if (attType != RANGED_ATTACK)
     {
@@ -13619,12 +13599,12 @@ void Unit::SetMaxHealth(uint32 val)
         SetHealth(val);
 }
 
-void Unit::SetPower(Powers power, uint32 val)
+void Unit::SetPower(Powers power, int32 val)
 {
     if (GetPower(power) == val)
         return;
 
-    uint32 maxPower = GetMaxPower(power);
+    int32 maxPower = GetMaxPower(power);
     if (maxPower < val)
         val = maxPower;
 
@@ -13632,9 +13612,9 @@ void Unit::SetPower(Powers power, uint32 val)
 
     WorldPacket data(SMSG_POWER_UPDATE);
     data.append(GetPackGUID());
-    data << uint32(1);  // count of updates. uint8 and uint32 for each.
+    data << int32(1);  // count of updates. uint8 and uint32 for each.
     data << uint8(power);
-    data << uint32(val);
+    data << int32(val);
     SendMessageToSet(&data, GetTypeId() == TYPEID_PLAYER ? true : false);
 
     // group update
@@ -13658,9 +13638,9 @@ void Unit::SetPower(Powers power, uint32 val)
     }
 }
 
-void Unit::SetMaxPower(Powers power, uint32 val)
+void Unit::SetMaxPower(Powers power, int32 val)
 {
-    uint32 cur_power = GetPower(power);
+    int32 cur_power = GetPower(power);
     SetStatInt32Value(UNIT_FIELD_MAXPOWER1 + power, val);
 
     // group update
@@ -13683,7 +13663,7 @@ void Unit::SetMaxPower(Powers power, uint32 val)
         SetPower(power, val);
 }
 
-uint32 Unit::GetCreatePowers(Powers power) const
+int32 Unit::GetCreatePowers(Powers power) const
 {
     // POWER_FOCUS and POWER_HAPPINESS only have hunter pet
     switch (power)
@@ -13693,19 +13673,28 @@ uint32 Unit::GetCreatePowers(Powers power) const
                 return false;
             else
                 return GetCreateMana();
-        case POWER_RAGE:      return 1000;
+        case POWER_RAGE:
+            return 1000;
         case POWER_FOCUS:
             if (GetTypeId() == TYPEID_PLAYER && (ToPlayer()->getClass() == CLASS_HUNTER))
                 return 100;
             return (GetTypeId() == TYPEID_PLAYER || !((Creature const*)this)->isPet() || ((Pet const*)this)->getPetType() != HUNTER_PET ? 0 : 100);
-        case POWER_ENERGY:    return 100;
-        case POWER_HAPPINESS: return (GetTypeId() == TYPEID_PLAYER || !((Creature const*)this)->isPet() || ((Pet const*)this)->getPetType() != HUNTER_PET ? 0 : 1050000);
-        case POWER_RUNIC_POWER: return 1000;
-        case POWER_RUNE:      return 0;
-        case POWER_HEALTH:    return 0;
-        case POWER_SOUL_SHARDS: return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_WARLOCK ? 3 : 0);
-        case POWER_ECLIPSE:     return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_DRUID ? 100 : 0); // Should be -100 to 100 this needs the power to be int32 instead of uint32
-        case POWER_HOLY_POWER:  return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_PALADIN ? 3 : 0);
+        case POWER_ENERGY:
+            return 100;
+        case POWER_HAPPINESS:
+            return (GetTypeId() == TYPEID_PLAYER || !((Creature const*)this)->isPet() || ((Pet const*)this)->getPetType() != HUNTER_PET ? 0 : 1050000);
+        case POWER_RUNIC_POWER:
+            return 1000;
+        case POWER_RUNE:
+            return 0;
+        case POWER_HEALTH:
+            return 0;
+        case POWER_SOUL_SHARDS:
+            return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_WARLOCK ? 3 : 0);
+        case POWER_ECLIPSE:
+            return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_DRUID ? 100 : 0); // Should be -100 to 100 this needs the power to be int32 instead of uint32
+        case POWER_HOLY_POWER:
+            return (GetTypeId() == TYPEID_PLAYER && ToPlayer()->getClass() == CLASS_PALADIN ? 3 : 0);
         default:
             break;
     }
@@ -15257,9 +15246,6 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit* victim, Aura* aura, SpellInfo const
             else
                 item = player->GetUseableItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED);
 
-            if (player->IsInFeralForm())
-                return false;
-
             if (!item || item->IsBroken() || item->GetTemplate()->Class != ITEM_CLASS_WEAPON || !((1<<item->GetTemplate()->SubClass) & spellProto->EquippedItemSubClassMask))
                 return false;
         }
@@ -15496,7 +15482,7 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
     // update get killing blow achievements, must be done before setDeathState to be able to require auras on target
     // and before Spirit of Redemption as it also removes auras
     if (player)
-        player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, victim);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, victim);
 
     // if talent known but not triggered (check priest class for speedup check)
     bool spiritOfRedemption = false;
@@ -15642,9 +15628,9 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
     if (victim->GetTypeId() == TYPEID_PLAYER)
     {
         if (GetTypeId() == TYPEID_UNIT)
-            victim->ToPlayer()->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_CREATURE, GetEntry());
+            victim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_CREATURE, GetEntry());
         else if (GetTypeId() == TYPEID_PLAYER && victim != this)
-            victim->ToPlayer()->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_PLAYER, 1, ToPlayer()->GetTeam());
+            victim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_PLAYER, 1, ToPlayer()->GetTeam());
     }
 
     // Hook for OnPVPKill Event

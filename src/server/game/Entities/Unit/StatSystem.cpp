@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -211,7 +211,6 @@ void Player::UpdateArmor()
 
     value  = GetModifierValue(unitMod, BASE_VALUE);         // base armor (from items)
     value *= GetModifierValue(unitMod, BASE_PCT);           // armor percent from items
-    value += GetStat(STAT_AGILITY) * 2.0f;                  // armor bonus from stats
     value += GetModifierValue(unitMod, TOTAL_VALUE);
 
     //add dynamic flat mods
@@ -291,12 +290,6 @@ void Player::UpdateMaxPower(Powers power)
     SetMaxPower(power, uint32(value));
 }
 
-void Player::ApplyFeralAPBonus(int32 amount, bool apply)
-{
-    _ModifyUInt32(apply, m_baseFeralAP, amount);
-    UpdateAttackPowerAndDamage();
-}
-
 void Player::UpdateAttackPowerAndDamage(bool ranged)
 {
     float val2 = 0.0f;
@@ -320,7 +313,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         switch (getClass())
         {
             case CLASS_HUNTER:
-                val2 = level * 2.0f + GetStat(STAT_AGILITY) - 10.0f;
+                val2 = (level * 2.0f) + GetStat(STAT_AGILITY) - 10.0f;
                 break;
             case CLASS_ROGUE:
                 val2 = level + GetStat(STAT_AGILITY) - 10.0f;
@@ -347,73 +340,40 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         switch (getClass())
         {
             case CLASS_WARRIOR:
-                val2 = level * 3.0f + GetStat(STAT_STRENGTH) * 2.0f - 20.0f;
+                val2 = (level * 3.0f) + (GetStat(STAT_STRENGTH) * 2.0f) - 20.0f;
                 break;
             case CLASS_PALADIN:
-                val2 = level * 3.0f + GetStat(STAT_STRENGTH) * 2.0f - 20.0f;
+                val2 = (level * 3.0f) + (GetStat(STAT_STRENGTH) * 2.0f) - 20.0f;
                 break;
             case CLASS_DEATH_KNIGHT:
-                val2 = level * 3.0f + GetStat(STAT_STRENGTH) * 2.0f - 20.0f;
+                val2 = (level * 3.0f) + (GetStat(STAT_STRENGTH) * 2.0f) - 20.0f;
                 break;
             case CLASS_ROGUE:
-                val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
+                val2 = (level * 2.0f) + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
                 break;
             case CLASS_HUNTER:
-                val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
+                val2 = (level * 2.0f) + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
                 break;
             case CLASS_SHAMAN:
-                val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
+                val2 = (level * 2.0f) + (GetStat(STAT_STRENGTH) - 10.0f) + ((GetStat(STAT_AGILITY) * 2) - 20.0f);
                 break;
             case CLASS_DRUID:
             {
                 // Check if Predatory Strikes is skilled
                 float mLevelMult = 0.0f;
                 float weapon_bonus = 0.0f;
-                if (IsInFeralForm())
-                {
-                    Unit::AuraEffectList const& mDummy = GetAuraEffectsByType(SPELL_AURA_DUMMY);
-                    for (Unit::AuraEffectList::const_iterator itr = mDummy.begin(); itr != mDummy.end(); ++itr)
-                    {
-                        AuraEffect* aurEff = *itr;
-                        if (aurEff->GetSpellInfo()->SpellIconID == 1563)
-                        {
-                            switch (aurEff->GetEffIndex())
-                            {
-                                case 0: // Predatory Strikes (effect 0)
-                                    mLevelMult = CalculatePctN(1.0f, aurEff->GetAmount());
-                                    break;
-                                case 1: // Predatory Strikes (effect 1)
-                                    if (Item* mainHand = m_items[EQUIPMENT_SLOT_MAINHAND])
-                                    {
-                                        // also gains % attack power from equipped weapon
-                                        ItemTemplate const *proto = mainHand->GetTemplate();
-                                        if (!proto)
-                                            continue;
-
-                                        weapon_bonus = CalculatePctN(float(proto->getFeralBonus()), aurEff->GetAmount());
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                    }
-                }
 
                 switch (GetShapeshiftForm())
                 {
                     case FORM_CAT:
-                        val2 = getLevel() * (mLevelMult + 2.0f) + GetStat(STAT_STRENGTH) * 2.0f + GetStat(STAT_AGILITY) - 20.0f + weapon_bonus + m_baseFeralAP;
+                        val2 = (GetStat(STAT_STRENGTH) * 2) + GetStat(STAT_AGILITY) + 40.0f - 20.0f;
                         break;
                     case FORM_BEAR:
                     case FORM_DIREBEAR:
-                        val2 = getLevel() * (mLevelMult + 3.0f) + GetStat(STAT_STRENGTH) * 2.0f - 20.0f + weapon_bonus + m_baseFeralAP;
-                        break;
-                    case FORM_MOONKIN:
-                        val2 = getLevel() * (mLevelMult + 1.5f) + GetStat(STAT_STRENGTH) * 2.0f - 20.0f + m_baseFeralAP;
+                        val2 = (GetStat(STAT_STRENGTH) * 2) - 20.0f + (GetShapeshiftForm() == FORM_BEAR ? 30.0f : 120.0f);
                         break;
                     default:
-                        val2 = GetStat(STAT_STRENGTH) * 2.0f - 20.0f;
+                        val2 = (GetStat(STAT_STRENGTH) * 2.0f) - 20.0f;
                         break;
                 }
                 break;
@@ -537,16 +497,7 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bo
     float weapon_mindamage = GetWeaponDamageRange(attType, MINDAMAGE);
     float weapon_maxdamage = GetWeaponDamageRange(attType, MAXDAMAGE);
 
-    if (IsInFeralForm())                                    //check if player is druid and in cat or bear forms
-    {
-        uint8 lvl = getLevel();
-        if (lvl > 60)
-            lvl = 60;
-
-        weapon_mindamage = lvl*0.85f*att_speed;
-        weapon_maxdamage = lvl*1.25f*att_speed;
-    }
-    else if (!CanUseAttackType(attType))      //check if player not in form but still can't use (disarm case)
+    if (!CanUseAttackType(attType))      //check if player not in form but still can't use (disarm case)
     {
         //cannot use ranged/off attack, set values to 0
         if (attType != BASE_ATTACK)

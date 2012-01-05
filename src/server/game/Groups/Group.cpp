@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1122,7 +1122,7 @@ void Group::CountTheRoll(Rolls::iterator rollI, uint32 NumberOfPlayers)
 
             if (player && player->GetSession())
             {
-                player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ROLL_NEED_ON_LOOT, roll->itemid, maxresul);
+                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ROLL_NEED_ON_LOOT, roll->itemid, maxresul);
 
                 ItemPosCountVec dest;
                 LootItem *item = &(roll->getLoot()->items[roll->itemSlot]);
@@ -1172,7 +1172,7 @@ void Group::CountTheRoll(Rolls::iterator rollI, uint32 NumberOfPlayers)
 
             if (player && player->GetSession())
             {
-                player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ROLL_GREED_ON_LOOT, roll->itemid, maxresul);
+                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ROLL_GREED_ON_LOOT, roll->itemid, maxresul);
 
                 LootItem *item = &(roll->getLoot()->items[roll->itemSlot]);
 
@@ -2278,4 +2278,89 @@ void Group::ToggleGroupMemberFlag(member_witerator slot, uint8 flag, bool apply)
         slot->flags |= flag;
     else
         slot->flags &= ~flag;
+}
+
+bool Group::IsGuildGroup(uint32 guildId, bool AllInSameMap, bool AllInSameInstanceId)
+{
+    uint32 mapId = 0;
+    uint32 InstanceId = 0;
+    uint32 count = 0;
+    std::vector<Player*> members;
+    // First we populate the array
+    for (GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next()) // Loop trought all members
+        if (Player *player = itr->getSource())
+            if (player->GetGuildId() == guildId) // Check if it has a guild
+                members.push_back(player);
+    
+    bool ret = false;
+    count = members.size();
+    for(std::vector<Player*>::iterator itr = members.begin(); itr != members.end(); ++itr) // Iterate through players
+    {
+        if (Player* player = (*itr))
+        {
+            if (mapId == 0)
+                mapId = player->GetMapId();
+                
+            if (InstanceId == 0)
+                InstanceId = player->GetInstanceId();
+                
+            if (player->GetMap()->IsNonRaidDungeon() && !ret)
+                if (count >= 3)
+                    ret = true;
+                    
+            if (player->GetMap()->IsRaid() && !ret)
+            {
+                switch (player->GetMap()->GetDifficulty())
+                {
+                    case RAID_DIFFICULTY_10MAN_NORMAL:
+                    case RAID_DIFFICULTY_10MAN_HEROIC:
+                        if (count >= 8)
+                            ret = true;
+                        break;
+                    
+                    case RAID_DIFFICULTY_25MAN_NORMAL:
+                    case RAID_DIFFICULTY_25MAN_HEROIC:
+                        if (count >= 20)
+                            ret = true;
+                        break;
+                }
+            }
+            
+            if (player->GetMap()->IsBattleArena() && !ret)
+                if (count == GetMembersCount())
+                    ret = true;
+                    
+            if (player->GetMap()->IsBattleground() && !ret)
+                if (Battleground* bg = player->GetBattleground())
+                    if (count >= uint32(bg->GetMaxPlayers() * 0.8f))
+                        ret = true;
+                    
+            // ToDo: Check 40-player raids: 10/40
+            
+            if (AllInSameMap && (mapId != player->GetMapId()))
+                return false;
+                
+            if (AllInSameInstanceId && (InstanceId != player->GetInstanceId()))
+                return false;
+        }
+    }
+    
+    return ret;
+}
+
+void Group::SendGuildGroupStateUpdate(bool guild)
+{
+    for (GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next()) // Loop trought all members
+    {
+        if(Player* player = itr->getSource())
+        {
+            WorldPacket data(SMSG_GUILD_PARTY_STATE_UPDATE, 1+4+4+4);
+            data << uint8(guild ? 1 << 7 : 0);
+            data << uint32(0); // numGuildRequired, not used
+            data << uint32(0); // numGuildPresent, not used
+            data << float(1.0f / 100.0f); // xpMultiplier
+            if(player->GetSession())
+                player->GetSession()->SendPacket(&data);
+        }
+    }
 }

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1344,10 +1344,6 @@ class Player : public Unit, public GridObject<Player>
 
         void ApplyEquipCooldown(Item* pItem);
 
-        void SetAmmo(uint32 item);
-        void RemoveAmmo();
-        bool CheckAmmoCompatibility(const ItemTemplate *ammo_proto) const;
-
         void QuickEquipItem(uint16 pos, Item *pItem);
         void VisualizeItem(uint8 slot, Item *pItem);
         void SetVisibleItemSlot(uint8 slot, Item *pItem);
@@ -1383,7 +1379,7 @@ class Player : public Unit, public GridObject<Player>
         bool IsUseEquipedWeapon(bool mainhand) const
         {
             // disarm applied only to mainhand weapon
-            return !IsInFeralForm() && (!mainhand || !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISARMED));
+            return !mainhand || !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISARMED);
         }
         bool IsTwoHandUsed() const
         {
@@ -1922,7 +1918,6 @@ class Player : public Unit, public GridObject<Player>
         void UpdateSpellPower();
         void UpdateMaxHealth();
         void UpdateMaxPower(Powers power);
-        void ApplyFeralAPBonus(int32 amount, bool apply);
         void UpdateAttackPowerAndDamage(bool ranged = false);
         void UpdateShieldBlockValue();
         void UpdateDamagePhysical(WeaponAttackType attType);
@@ -2417,7 +2412,7 @@ class Player : public Unit, public GridObject<Player>
             else if(HasSpell(883))
                 last_known = 1;
 
-            for(uint32 i = uint32(PET_SLOT_HUNTER_FIRST); i < last_known; i++)
+            for (uint32 i = uint32(PET_SLOT_HUNTER_FIRST); i < last_known; i++)
                 if((m_petSlotUsed & (1 << i)) == 0)
                     return PetSlot(i);
 
@@ -2784,7 +2779,6 @@ class Player : public Unit, public GridObject<Player>
         float m_auraBaseMod[BASEMOD_END][MOD_END];
         int16 m_baseRatingValue[MAX_COMBAT_RATING];
 
-        uint32 m_baseFeralAP;
         uint32 m_baseManaRegen;
         uint32 m_baseHealthRegen;
 

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +24,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "Unit.h"
+#include "ScriptSystem.h"
 
 class Player;
 class WorldObject;
@@ -181,14 +182,6 @@ enum SpawnedEventMode
     SPAWNED_EVENT_ZONE  = 2
 };
 
-// String text additional data, used in (CreatureEventAI)
-struct StringTextData
-{
-    uint32 SoundId;
-    uint8  Type;
-    uint32 Language;
-    uint32 Emote;
-};
 // Text Maps
 typedef UNORDERED_MAP<int32, StringTextData> CreatureEventAI_TextMap;
 

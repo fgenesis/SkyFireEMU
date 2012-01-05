@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1498,7 +1498,7 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
                         m_caster->GetPartyMembers(PartyMembers);
                         bool Continue = false;
                         uint32 player = 0;
-                        for(std::list<Unit*>::iterator itr = PartyMembers.begin(); itr != PartyMembers.end(); ++itr) // If caster is in party with a player
+                        for (std::list<Unit*>::iterator itr = PartyMembers.begin(); itr != PartyMembers.end(); ++itr) // If caster is in party with a player
                         {
                             ++player;
                             if (Continue == false && player > 1)
@@ -2389,13 +2389,7 @@ void Spell::EffectPowerBurn(SpellEffIndex effIndex)
     m_damage += newDamage;
 }
 
-void Spell::EffectHeal(SpellEffIndex /*effIndex*/)
-{
-    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
-        return;
-}
-
-void Spell::SpellDamageHeal(SpellEffIndex effIndex)
+void Spell::EffectHeal(SpellEffIndex effIndex)
 {
     if (effectHandleMode != SPELL_EFFECT_HANDLE_LAUNCH_TARGET)
         return;
@@ -4349,68 +4343,6 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
             }
             break;
         }
-        case SPELLFAMILY_HUNTER:
-        {
-            float shotMod = 0;
-            switch(m_spellInfo->Id)
-            {
-                case 53351: // Kill Shot
-                {
-                    // "You attempt to finish the wounded target off, firing a long range attack dealing % weapon damage plus RAP*0.30+543."
-                    shotMod = 0.3f;
-                    break;
-                }
-                case 56641: // Steady Shot
-                {
-                    // "A steady shot that causes % weapon damage plus RAP*0.021+280. Generates 9 Focus."
-                    // focus effect done in dummy
-                    shotMod = 0.021f;
-                    break;
-                }
-                case 19434: // Aimed Shot
-                    {
-                        // "A powerful aimed shot that deals % ranged weapon damage plus (RAP * 0.724)+776."
-                        shotMod = 0.724f;
-                        break;
-                    }
-                case 77767: // Cobra Shot
-                {
-                    // "Deals weapon damage plus (276 + (RAP * 0.017)) in the form of Nature damage and increases the duration of your Serpent Sting on the target by 6 sec. Generates 9 Focus."
-                    shotMod = 0.017f;
-                    break;
-                }
-                case 3044: // Arcane Shot
-                case 63741: // Chimera Shot
-                {
-                    // "An instant shot that causes % weapon damage plus (RAP * 0.0483)+289 as Arcane damage."
-                    if (m_spellInfo->SpellFamilyFlags[0] & 0x800)
-                        shotMod = 0.0483f;
-
-                    // "An instant shot that causes ranged weapon damage plus RAP*0.732+1620, refreshing the duration of  your Serpent Sting and healing you for 5% of your total health."
-                    if (m_spellInfo->SpellFamilyFlags[2] & 0x1)
-                        shotMod = 0.732f;
-
-                    // Marked for Death 1, 2
-                    if (m_caster->HasAuraEffect(53241, 0, 0))
-                        if (roll_chance_i(m_spellInfo->Effects[EFFECT_0].BasePoints))
-                        {
-                            m_caster->CastSpell(m_caster->ToPlayer()->GetSelectedUnit(), 88691, true);
-                            break;
-                        }
-                        if (m_caster->HasAuraEffect(53243, 0, 0))
-                            if (roll_chance_i(m_spellInfo->Effects[EFFECT_0].BasePoints))
-                            {
-                                m_caster->CastSpell(m_caster->ToPlayer()->GetSelectedUnit(), 88691, true);
-                                break;
-                            }
-                            break;
-                }
-                default:
-                    break;
-            }
-            spell_bonus += int32((shotMod*m_caster->GetTotalAttackPowerValue(RANGED_ATTACK)));
-            break;
-        }
         case SPELLFAMILY_DEATHKNIGHT:
         {
             // Plague Strike
@@ -4504,6 +4436,7 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
 
     int32 weaponDamage = m_caster->CalculateDamage(m_attackType, normalized, true);
 
+    int32 AddDamage = 0;
     // Sequence is important
     for (int j = 0; j < MAX_SPELL_EFFECTS; ++j)
     {
@@ -4514,14 +4447,16 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
             case SPELL_EFFECT_WEAPON_DAMAGE:
             case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
             case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
-                weaponDamage += fixed_bonus;
+                AddDamage += fixed_bonus;
                 break;
             case SPELL_EFFECT_WEAPON_PERCENT_DAMAGE:
-                weaponDamage = int32(weaponDamage* weaponDamagePercentMod);
+                weaponDamage = int32(weaponDamage * weaponDamagePercentMod);
             default:
                 break;                                      // not weapon damage effect, just skip
         }
     }
+
+    weaponDamage += AddDamage;
 
     if (spell_bonus)
         weaponDamage += spell_bonus;
@@ -7676,7 +7611,7 @@ void Spell::EffectCastButtons(SpellEffIndex effIndex)
             continue;
 
         uint32 cost = spellInfo->CalcPowerCost(m_caster, spellInfo->GetSchoolMask());
-        if (m_caster->GetPower(POWER_MANA) < cost)
+        if (uint32(m_caster->GetPower(POWER_MANA)) < cost)
             continue;
 
         TriggerCastFlags triggerFlags = TriggerCastFlags(TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CAST_IN_PROGRESS | TRIGGERED_CAST_DIRECTLY);
