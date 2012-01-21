@@ -27,10 +27,10 @@
 
 Bag::Bag(): Item()
 {
-    m_objectType |= TYPEMASK_CONTAINER;
-    m_objectTypeId = TYPEID_CONTAINER;
+    _objectType |= TYPEMASK_CONTAINER;
+    _objectTypeId = TYPEID_CONTAINER;
 
-    m_valuesCount = CONTAINER_END;
+    _valuesCount = CONTAINER_END;
 
     memset(m_bagslot, 0, sizeof(Item *) * MAX_BAG_SIZE);
 }
@@ -218,8 +218,8 @@ uint32 Bag::GetItemCountWithLimitCategory(uint32 limitCategory, Item* skipItem) 
     for (uint32 i = 0; i < GetBagSize(); ++i)
         if (Item* pItem = m_bagslot[i])
             if (pItem != skipItem)
-                if (ItemTemplate const* pProto = pItem->GetTemplate())
-                    if (pProto->ItemLimitCategory == limitCategory)
+                if (ItemTemplate const* proto = pItem->GetTemplate())
+                    if (proto->ItemLimitCategory == limitCategory)
                         count += m_bagslot[i]->GetCount();
 
     return count;

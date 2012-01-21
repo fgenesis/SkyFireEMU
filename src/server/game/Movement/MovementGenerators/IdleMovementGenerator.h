@@ -77,3 +77,4 @@ class AssistanceDistractMovementGenerator : public DistractMovementGenerator
 };
 
 #endif
+

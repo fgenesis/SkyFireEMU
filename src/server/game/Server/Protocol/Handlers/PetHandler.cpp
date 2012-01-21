@@ -78,6 +78,17 @@ void WorldSession::HandlePetAction(WorldPacket & recv_data)
         return;
     }
 
+    float pos_x = pet->GetPositionX();
+    float pos_y = pet->GetPositionY();
+    float pos_z = pet->GetPositionZ();
+
+    recv_data >> pos_x;                                     // 4.0.3, x
+    recv_data >> pos_y;                                     // 4.0.3, y
+    recv_data >> pos_z;                                     // 4.0.3, z
+
+    // used also for charmed creature
+    sLog->outDetail("HandlePetAction: Pet %u - flag: %u, spellid: %u, target: %u.", uint32(GUID_LOPART(guid1)), uint32(flag), spellid, uint32(GUID_LOPART(guid2)));
+
     if (pet != GetPlayer()->GetFirstControlled())
     {
         sLog->outError("HandlePetAction: Pet (GUID: %u) does not belong to player '%s'", uint32(GUID_LOPART(guid1)), GetPlayer()->GetName());
@@ -109,6 +120,9 @@ void WorldSession::HandlePetAction(WorldPacket & recv_data)
         for (std::vector<Unit*>::iterator itr = controlled.begin(); itr != controlled.end(); ++itr)
             HandlePetActionHelper(*itr, guid1, spellid, flag, guid2);
     }
+
+    if (pet->GetTypeId() != TYPEID_PLAYER && flag == ACT_COMMAND && spellid == COMMAND_MOVE)
+        pet->MonsterMoveWithSpeed(pos_x, pos_y, pos_z, 3000);
 }
 
 void WorldSession::HandlePetStopAttack(WorldPacket &recv_data)
@@ -156,6 +170,7 @@ void WorldSession::HandlePetActionHelper(Unit* pet, uint64 guid1, uint32 spellid
                 case COMMAND_STAY:                          //flat=1792  //STAY
                     pet->AttackStop();
                     pet->InterruptNonMeleeSpells(false);
+                    pet->GetMotionMaster()->Clear(false);
                     pet->GetMotionMaster()->MoveIdle();
                     charmInfo->SetCommandState(COMMAND_STAY);
 
@@ -780,13 +795,13 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
     caster->ClearUnitState(UNIT_STAT_FOLLOW);
 
     Spell* spell = new Spell(caster, spellInfo, TRIGGERED_NONE);
-    spell->m_cast_count = castCount;                    // probably pending spell cast
+    spell->_cast_count = castCount;                    // probably pending spell cast
     spell->m_targets = targets;
 
     // TODO: need to check victim?
     SpellCastResult result;
-    if (caster->m_movedPlayer)
-        result = spell->CheckPetCast(caster->m_movedPlayer->GetSelectedUnit());
+    if (caster->_movedPlayer)
+        result = spell->CheckPetCast(caster->_movedPlayer->GetSelectedUnit());
     else
         result = spell->CheckPetCast(NULL);
     if (result == SPELL_CAST_OK)

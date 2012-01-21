@@ -163,8 +163,9 @@ enum EnchantmentSlot
     SOCK_ENCHANTMENT_SLOT_3         = 4,
     BONUS_ENCHANTMENT_SLOT          = 5,
     PRISMATIC_ENCHANTMENT_SLOT      = 6,                    // added at apply special permanent enchantment
-    REFORGE_ENCHANTMENT_SLOT        = 7,
-    MAX_INSPECTED_ENCHANTMENT_SLOT  = 8,
+    ENCHANTMENT_SLOT_UNK            = 7,
+    REFORGE_ENCHANTMENT_SLOT        = 8,
+    MAX_INSPECTED_ENCHANTMENT_SLOT  = 9,
 
     PROP_ENCHANTMENT_SLOT_0         = 9,                    // used with RandomSuffix
     PROP_ENCHANTMENT_SLOT_1         = 10,                    // used with RandomSuffix
@@ -319,7 +320,7 @@ class Item : public Object
         void  SetSpellCharges(uint8 index/*0..5*/, int32 value) { SetInt32Value(ITEM_FIELD_SPELL_CHARGES + index, value); }
 
         Loot loot;
-        bool m_lootGenerated;
+        bool _lootGenerated;
 
         // Update States
         ItemUpdateState GetState() const { return uState; }

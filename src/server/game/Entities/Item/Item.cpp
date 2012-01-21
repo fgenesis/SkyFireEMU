@@ -169,9 +169,9 @@ void RemoveItemsSetItem(Player*player, ItemTemplate const* proto)
     }
 }
 
-bool ItemCanGoIntoBag(ItemTemplate const* pProto, ItemTemplate const* pBagProto)
+bool ItemCanGoIntoBag(ItemTemplate const* proto, ItemTemplate const* pBagProto)
 {
-    if (!pProto || !pBagProto)
+    if (!proto || !pBagProto)
         return false;
 
     switch (pBagProto->Class)
@@ -182,35 +182,35 @@ bool ItemCanGoIntoBag(ItemTemplate const* pProto, ItemTemplate const* pBagProto)
                 case ITEM_SUBCLASS_CONTAINER:
                     return true;
                 case ITEM_SUBCLASS_SOUL_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_SOUL_SHARDS))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_SOUL_SHARDS))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_HERB_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_HERBS))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_HERBS))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_ENCHANTING_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_ENCHANTING_SUPP))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_ENCHANTING_SUPP))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_MINING_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_MINING_SUPP))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_MINING_SUPP))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_ENGINEERING_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_ENGINEERING_SUPP))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_ENGINEERING_SUPP))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_GEM_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_GEMS))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_GEMS))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_LEATHERWORKING_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_LEATHERWORKING_SUPP))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_LEATHERWORKING_SUPP))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_INSCRIPTION_CONTAINER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_INSCRIPTION_SUPP))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_INSCRIPTION_SUPP))
                         return false;
                     return true;
                 default:
@@ -220,11 +220,11 @@ bool ItemCanGoIntoBag(ItemTemplate const* pProto, ItemTemplate const* pBagProto)
             switch (pBagProto->SubClass)
             {
                 case ITEM_SUBCLASS_QUIVER:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_ARROWS))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_ARROWS))
                         return false;
                     return true;
                 case ITEM_SUBCLASS_AMMO_POUCH:
-                    if (!(pProto->BagFamily & BAG_FAMILY_MASK_BULLETS))
+                    if (!(proto->BagFamily & BAG_FAMILY_MASK_BULLETS))
                         return false;
                     return true;
                 default:
@@ -236,17 +236,17 @@ bool ItemCanGoIntoBag(ItemTemplate const* pProto, ItemTemplate const* pBagProto)
 
 Item::Item()
 {
-    m_objectType |= TYPEMASK_ITEM;
-    m_objectTypeId = TYPEID_ITEM;
+    _objectType |= TYPEMASK_ITEM;
+    _objectTypeId = TYPEID_ITEM;
 
     m_updateFlag = 0;
 
-    m_valuesCount = ITEM_END;
+    _valuesCount = ITEM_END;
     m_slot = 0;
     uState = ITEM_NEW;
     uQueuePos = -1;
     m_container = NULL;
-    m_lootGenerated = false;
+    _lootGenerated = false;
     mb_in_trade = false;
     m_lastPlayedTimeUpdate = time(NULL);
 
@@ -716,7 +716,7 @@ void Item::AddToUpdateQueueOf(Player* player)
         return;
     }
 
-    if (player->m_itemUpdateQueueBlocked)
+    if (player->_itemUpdateQueueBlocked)
         return;
 
     player->m_itemUpdateQueue.push_back(this);
@@ -736,7 +736,7 @@ void Item::RemoveFromUpdateQueueOf(Player* player)
         return;
     }
 
-    if (player->m_itemUpdateQueueBlocked)
+    if (player->_itemUpdateQueueBlocked)
         return;
 
     player->m_itemUpdateQueue[uQueuePos] = NULL;
@@ -755,7 +755,7 @@ bool Item::IsEquipped() const
 
 bool Item::CanBeTraded(bool mail, bool trade) const
 {
-    if (m_lootGenerated)
+    if (_lootGenerated)
         return false;
 
     if ((!mail || !IsBoundAccountWide()) && (IsSoulBound() && (!HasFlag(ITEM_FIELD_FLAGS, ITEM_FLAG_BOP_TRADEABLE) || !trade)))
@@ -818,7 +818,7 @@ bool Item::IsBoundByEnchant() const
 InventoryResult Item::CanBeMergedPartlyWith(ItemTemplate const* proto) const
 {
     // not allow merge looting currently items
-    if (m_lootGenerated)
+    if (_lootGenerated)
         return EQUIP_ERR_ALREADY_LOOTED;
 
     // check item type
@@ -928,24 +928,20 @@ void Item::ClearEnchantment(EnchantmentSlot slot)
 
 bool Item::GemsFitSockets() const
 {
-    bool fits = true;
     for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT+MAX_GEM_SOCKETS; ++enchant_slot)
     {
         uint8 SocketColor = GetTemplate()->Socket[enchant_slot-SOCK_ENCHANTMENT_SLOT].Color;
 
-        uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
-        if (!enchant_id)
-        {
-            if (SocketColor) fits &= false;
+        if (!SocketColor) // no socket slot
             continue;
-        }
+
+        uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
+        if (!enchant_id) // no gems on this socket
+            return false;
 
         SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
-        if (!enchantEntry)
-        {
-            if (SocketColor) fits &= false;
-            continue;
-        }
+        if (!enchantEntry) // invalid gem id on this socket
+            return false;
 
         uint8 GemColor = 0;
 
@@ -961,9 +957,10 @@ bool Item::GemsFitSockets() const
             }
         }
 
-        fits &= (GemColor & SocketColor) ? true : false;
+        if (!(GemColor & SocketColor)) // bad gem color on this socket
+            return false;
     }
-    return fits;
+    return true;
 }
 
 uint8 Item::GetGemCountWithID(uint32 GemID) const
@@ -1033,15 +1030,15 @@ Item* Item::CreateItem(uint32 item, uint32 count, Player const* player)
     if (count < 1)
         return NULL;                                        //don't create item at zero count
 
-    ItemTemplate const* pProto = sObjectMgr->GetItemTemplate(item);
-    if (pProto)
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(item);
+    if (proto)
     {
-        if (count > pProto->GetMaxStackSize())
-            count = pProto->GetMaxStackSize();
+        if (count > proto->GetMaxStackSize())
+            count = proto->GetMaxStackSize();
 
-        ASSERT(count !=0 && "pProto->Stackable == 0 but checked at loading already");
+        ASSERT(count !=0 && "proto->Stackable == 0 but checked at loading already");
 
-        Item* pItem = NewItemOrBag(pProto);
+        Item* pItem = NewItemOrBag(proto);
         if (pItem->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_ITEM), item, player))
         {
             pItem->SetCount(count);

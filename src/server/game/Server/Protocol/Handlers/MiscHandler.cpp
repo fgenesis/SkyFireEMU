@@ -162,7 +162,8 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket & recv_data)
         else
         {
             go->AI()->GossipSelect(_player, menuId, gossipListId);
-            sScriptMgr->OnGossipSelect(_player, go, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+            if (!sScriptMgr->OnGossipSelect(_player, go, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId)))
+                _player->OnGossipSelect(go, gossipListId, menuId);
         }
     }
 }
@@ -170,6 +171,11 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket & recv_data)
 void WorldSession::HandleWhoOpcode(WorldPacket & recv_data)
 {
     sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: Recvd CMSG_WHO Message");
+
+    time_t now = time(NULL);
+    if (now - timeLastWhoCommand < 5)
+        return;
+    else timeLastWhoCommand = now;
 
     uint32 matchcount = 0;
 
@@ -370,7 +376,7 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket & /*recv_data*/)
 
     if (GetPlayer()->isInCombat())
         reason = 1;
-    else if (GetPlayer()->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_JUMPING | MOVEMENTFLAG_FALLING))
+    else if (GetPlayer()->_movementInfo.HasMovementFlag(MOVEMENTFLAG_JUMPING | MOVEMENTFLAG_FALLING))
         reason = 3;                                         // is jumping or falling
     else if (GetPlayer()->duel || GetPlayer()->HasAura(9454)) // is dueling or frozen by GM via freeze command
         reason = 2;                                         // FIXME - Need the correct value
@@ -1246,10 +1252,9 @@ void WorldSession::HandleInspectHonorStatsOpcode(WorldPacket& recv_data)
 
     WorldPacket data(SMSG_INSPECT_HONOR_STATS, 8+1+4*4);
     data << uint64(player->GetGUID());
-    data << uint8(player->GetHonorPoints());
+    data << uint8(player->GetCurrency(CURRENCY_TYPE_HONOR_POINTS));
     data << uint32(player->GetUInt32Value(PLAYER_FIELD_KILLS));
-    //data << uint32(player->GetUInt32Value(PLAYER_FIELD_TODAY_CONTRIBUTION));
-    //data << uint32(player->GetUInt32Value(PLAYER_FIELD_YESTERDAY_CONTRIBUTION));
+    data << uint8(0);
     data << uint32(player->GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS));
     data << uint32(0);
     data << uint32(0);
@@ -1646,7 +1651,7 @@ void WorldSession::HandleMoveSetCanFlyAckOpcode(WorldPacket & recv_data)
 
     recv_data.read_skip<float>();                           // unk2
 
-    _player->m_mover->m_movementInfo.flags = movementInfo.GetMovementFlags();
+    _player->_mover->_movementInfo.flags = movementInfo.GetMovementFlags();
 }
 
 void WorldSession::HandleRequestPetInfoOpcode(WorldPacket & /*recv_data */)
@@ -1794,7 +1799,7 @@ void WorldSession::HandleHearthAndResurrect(WorldPacket& /*recv_data*/)
 
     _player->BuildPlayerRepop();
     _player->ResurrectPlayer(100);
-    _player->TeleportTo(_player->m_homebindMapId, _player->m_homebindX, _player->m_homebindY, _player->m_homebindZ, _player->GetOrientation());
+    _player->TeleportTo(_player->_homebindMapId, _player->_homebindX, _player->_homebindY, _player->_homebindZ, _player->GetOrientation());
 }
 
 void WorldSession::HandleInstanceLockResponse(WorldPacket& recvPacket)

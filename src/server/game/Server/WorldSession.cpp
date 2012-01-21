@@ -95,14 +95,14 @@ m_playerRecentlyLogout(false), m_playerSave(false),
 m_sessionDbcLocale(sWorld->GetAvailableDbcLocale(locale)),
 m_sessionDbLocaleIndex(locale),
 m_latency(0), m_TutorialsChanged(false), recruiterId(recruiter),
-isRecruiter(isARecruiter)
+isRecruiter(isARecruiter), timeLastWhoCommand(0)
 {
     if (sock)
     {
         m_Address = sock->GetRemoteAddress();
         sock->AddReference();
         ResetTimeOutTime();
-        LoginDatabase.PExecute("UPDATE account SET online = %d WHERE id = %u;", realmID,  GetAccountId());
+        LoginDatabase.PExecute("UPDATE account SET online = %d WHERE id = %u;", realmID,  GetAccountId());     // One-time query
     }
 
     InitializeQueryCallbackParameters();
@@ -128,7 +128,7 @@ WorldSession::~WorldSession()
     while (_recvQueue.next(packet))
         delete packet;
 
-    LoginDatabase.PExecute("UPDATE account SET online = 0 WHERE id = %u;", GetAccountId());
+    LoginDatabase.PExecute("UPDATE account SET online = 0 WHERE id = %u;", GetAccountId());     // One-time query
 }
 
 void WorldSession::SizeError(WorldPacket const &packet, uint32 size) const
@@ -239,8 +239,8 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     {
         OpcodeHandler const &opHandle = opcodeTable[packet->GetOpcode()];
 
-        // Added this line for debugging. Just comment out if you don't want opcode spam.
-        sLog->outString("SESSION: Received opcode 0x%.4X (%s)", packet->GetOpcode(), packet->GetOpcode()>OPCODE_NOT_FOUND?"nf":LookupOpcodeName(packet->GetOpcode()));
+		// Opcode display while only while debugging.
+        sLog->outDebug(LOG_FILTER_OPCODES, "SESSION: Received opcode 0x%.4X (%s)", packet->GetOpcode(), packet->GetOpcode()>OPCODE_NOT_FOUND?"nf":LookupOpcodeName(packet->GetOpcode()));
 
         // !=NULL checked in WorldSocket
         try
@@ -445,8 +445,8 @@ void WorldSession::LogoutPlayer(bool Save)
             bg->EventPlayerLoggedOut(_player);
 
         ///- Teleport to home if the player is in an invalid instance
-        if (!_player->m_InstanceValid && !_player->isGameMaster())
-            _player->TeleportTo(_player->m_homebindMapId, _player->m_homebindX, _player->m_homebindY, _player->m_homebindZ, _player->GetOrientation());
+        if (!_player->_InstanceValid && !_player->isGameMaster())
+            _player->TeleportTo(_player->_homebindMapId, _player->_homebindX, _player->_homebindY, _player->_homebindZ, _player->GetOrientation());
 
         sOutdoorPvPMgr->HandlePlayerLeaveZone(_player, _player->GetZoneId());
 

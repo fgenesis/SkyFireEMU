@@ -51,6 +51,7 @@ enum Gossip_Option
     GOSSIP_OPTION_UNLEARNPETTALENTS = 17,                   //UNIT_NPC_FLAG_TRAINER             (16) (bonus option for GOSSIP_OPTION_TRAINER)
     GOSSIP_OPTION_LEARNDUALSPEC     = 18,                   //UNIT_NPC_FLAG_TRAINER             (16) (bonus option for GOSSIP_OPTION_TRAINER)
     GOSSIP_OPTION_OUTDOORPVP        = 19,                   //added by code (option for outdoor pvp creatures)
+    GOSSIP_OPTION_REFORGE           = 20,                   //UNIT_NPC_FLAG_REFORGE             (134217728)
     GOSSIP_OPTION_MAX
 };
 
@@ -268,7 +269,7 @@ class PlayerMenu
         /*********************************************************/
         /***                    QUEST SYSTEM                   ***/
         /*********************************************************/
-        void SendQuestGiverStatus(uint8 questStatus, uint64 npcGUID) const;
+        void SendQuestGiverStatus(uint32 questStatus, uint64 npcGUID) const;
 
         void SendQuestGiverQuestList(QEmote eEmote, const std::string& Title, uint64 npcGUID);
 

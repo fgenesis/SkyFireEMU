@@ -345,7 +345,7 @@ Aura* Aura::Create(SpellInfo const* spellproto, uint8 effMask, WorldObject* owne
 Aura::Aura(SpellInfo const* spellproto, WorldObject* owner, Unit* caster, Item* castItem, uint64 casterGUID) :
 m_spellInfo(spellproto), m_casterGuid(casterGUID ? casterGUID : caster->GetGUID()),
 m_castItemGuid(castItem ? castItem->GetGUID() : 0), m_applyTime(time(NULL)),
-m_owner(owner), m_timeCla(0), m_updateTargetMapInterval(0),
+_owner(owner), m_timeCla(0), m_updateTargetMapInterval(0),
 m_casterLevel(caster ? caster->getLevel() : m_spellInfo->SpellLevel), m_procCharges(0), m_stackAmount(1),
 m_isRemoved(false), m_isSingleTarget(false), m_isUsingCharges(false)
 {
@@ -418,7 +418,7 @@ Unit* Aura::GetCaster() const
 
 AuraObjectType Aura::GetType() const
 {
-    return (m_owner->GetTypeId() == TYPEID_DYNAMICOBJECT) ? DYNOBJ_AURA_TYPE : UNIT_AURA_TYPE;
+    return (_owner->GetTypeId() == TYPEID_DYNAMICOBJECT) ? DYNOBJ_AURA_TYPE : UNIT_AURA_TYPE;
 }
 
 void Aura::_ApplyForTarget(Unit* target, Unit* caster, AuraApplication * auraApp)
@@ -642,7 +642,7 @@ void Aura::_ApplyEffectForTargets(uint8 effIndex)
 }
 void Aura::UpdateOwner(uint32 diff, WorldObject* owner)
 {
-    ASSERT(owner == m_owner);
+    ASSERT(owner == _owner);
 
     Unit* caster = GetCaster();
     // Apply spellmods for channeled auras
@@ -1265,15 +1265,6 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
 
                 switch(GetId())
                 {
-                    case 1978: // Improved Serpent Sting
-                    {
-                        if (AuraEffect const * aurEff = caster->GetDummyAuraEffect(SPELLFAMILY_HUNTER, 536, 0))
-                        {
-                            int32 basepoints0 = aurEff->GetAmount() * GetEffect(0)->GetTotalTicks() * caster->SpellDamageBonus(target, GetSpellInfo(), GetEffect(0)->GetAmount(), DOT) / 100;
-                            caster->CastCustomSpell(target, 83077, &basepoints0, NULL, NULL, true, NULL, GetEffect(0));
-                        }
-                        break;
-                    }
                     case 82925: // Master Marksman
                     {
                         if (target->GetTypeId() == TYPEID_PLAYER && GetStackAmount() == 5)
@@ -2138,7 +2129,6 @@ void Aura::_DeleteRemovedApplications()
 
 void Aura::LoadScripts()
 {
-    sLog->outDebug(LOG_FILTER_SPELLS_AURAS, "Aura::LoadScripts");
     sScriptMgr->CreateAuraScripts(m_spellInfo->Id, m_loadedScripts);
     for (std::list<AuraScript*>::iterator itr = m_loadedScripts.begin(); itr != m_loadedScripts.end() ;)
     {
@@ -2149,6 +2139,7 @@ void Aura::LoadScripts()
             m_loadedScripts.erase(bitr);
             continue;
         }
+        sLog->outDebug(LOG_FILTER_SPELLS_AURAS, "Aura::LoadScripts: Script `%s` for aura `%u` is loaded now", (*itr)->_GetScriptName()->c_str(), m_spellInfo->Id);
         (*itr)->Register();
         ++itr;
     }

@@ -288,6 +288,7 @@ class WorldSession
         void SendTrainerList(uint64 guid, const std::string& strTitle);
         void SendListInventory(uint64 guid);
         void SendShowBank(uint64 guid);
+        void SendShowReforge(uint64 guid);
         void SendTabardVendorActivate(uint64 guid);
         void SendSpiritResurrect();
         void SendBindPoint(Creature* npc);
@@ -879,6 +880,7 @@ class WorldSession
         void HandleGuildBankBuyTab(WorldPacket& recv_data);
         void HandleQueryGuildBankTabText(WorldPacket& recv_data);
         void HandleSetGuildBankTabText(WorldPacket& recv_data);
+        void HandleGuildQueryNews(WorldPacket& recv_data);
         void HandleGuildQueryTradeSkill(WorldPacket& recv_data);
 
         // Refer-a-Friend
@@ -980,6 +982,7 @@ class WorldSession
         uint32 recruiterId;
         bool isRecruiter;
         ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> _recvQueue;
+        time_t timeLastWhoCommand;
 };
 #endif
 /// @}

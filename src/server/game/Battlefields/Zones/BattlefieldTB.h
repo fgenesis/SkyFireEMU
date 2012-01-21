@@ -176,7 +176,7 @@ class BfCapturePointTB: public BfCapturePoint
     void LinkToWorkShop(BfTBWorkShopData* ws) {m_WorkShop = ws;}
 
     void ChangeTeam(TeamId oldteam);
-    TeamId GetTeam() const { return m_team; }
+    TeamId GetTeam() const { return _team; }
 
 protected:
     BfTBWorkShopData* m_WorkShop;
@@ -426,11 +426,9 @@ const BfTBCapturePointDataBase TBCapturePointDataBase[TB_MAX_WORKSHOP]=
     },
 };
 
-//*********************************
-
-//********************************************************************
-//*                Structs using for Building,Graveyard,Workshop         *
-//********************************************************************
+/********************************************************************
+*                Structs using for Building,Graveyard,Workshop      *
+********************************************************************/
 
 // Structure for different building witch can be destroy during battle
 struct BfTBGameObjectBuilding

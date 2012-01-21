@@ -377,10 +377,11 @@ enum ItemSubclassArmor
     ITEM_SUBCLASS_ARMOR_IDOL                    = 8,
     ITEM_SUBCLASS_ARMOR_TOTEM                   = 9,
     ITEM_SUBCLASS_ARMOR_SIGIL                   = 10,
-    ITEM_SUBCLASS_ARMOR_RELIC                   = 11
+    ITEM_SUBCLASS_ARMOR_RELIC                   = 11,
+    ITEM_SUBCLASS_ARMOR_BUCKLER                 = 12
 };
 
-#define MAX_ITEM_SUBCLASS_ARMOR                   12
+#define MAX_ITEM_SUBCLASS_ARMOR                   13
 
 enum ItemSubclassReagent
 {
@@ -723,7 +724,6 @@ struct ItemSetNameEntry
 struct ItemSetNameLocale
 {
     StringVector Name;
-    StringVector Description;
 };
 
 // GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some platform

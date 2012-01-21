@@ -225,7 +225,7 @@ uint32 Quest::XPValue(Player* player) const
     return 0;
 }
 
-int32  Quest::GetRewOrReqMoney() const
+int32 Quest::GetRewOrReqMoney() const
 {
     if (RewOrReqMoney <= 0)
         return RewOrReqMoney;

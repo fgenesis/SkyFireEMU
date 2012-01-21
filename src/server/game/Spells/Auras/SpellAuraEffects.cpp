@@ -727,7 +727,7 @@ int32 AuraEffect::CalculateAmount(Unit* caster)
                             continue;
                         if(cap->map != -1 && cap->map != map)
                             continue;
-                        if(cap->reqSkillLevel > plrskill || cap->reqSkillLevel <= maxSkill)
+                        if (cap->reqSkillLevel && (cap->reqSkillLevel > plrskill || cap->reqSkillLevel <= maxSkill))
                             continue;
                         if(cap->reqSpell && !player->HasSpell(cap->reqSpell))
                             continue;
@@ -1136,8 +1136,16 @@ void AuraEffect::UpdatePeriodic(Unit* caster)
                         case 49472: // Drink Coffee
                         case 57073:
                         case 61830:
+                        case 69176:
+                        case 72623:
                         case 80166:
                         case 80167:
+                        case 87958:
+                        case 87959:
+                        case 92736:
+                        case 92797:
+                        case 92800:
+                        case 92803:
                             if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
                                 return;
                             // Get SPELL_AURA_MOD_POWER_REGEN aura from spell
@@ -1615,15 +1623,15 @@ void AuraEffect::HandleModInvisibilityDetect(AuraApplication const* aurApp, uint
 
     if (apply)
     {
-        target->m_invisibilityDetect.AddFlag(type);
-        target->m_invisibilityDetect.AddValue(type, GetAmount());
+        target->_invisibilityDetect.AddFlag(type);
+        target->_invisibilityDetect.AddValue(type, GetAmount());
     }
     else
     {
         if (!target->HasAuraType(SPELL_AURA_MOD_INVISIBILITY_DETECT))
-            target->m_invisibilityDetect.DelFlag(type);
+            target->_invisibilityDetect.DelFlag(type);
 
-        target->m_invisibilityDetect.AddValue(type, -GetAmount());
+        target->_invisibilityDetect.AddValue(type, -GetAmount());
     }
 
     // call functions which may have additional effects after chainging state of unit
@@ -1831,8 +1839,8 @@ void AuraEffect::HandleAuraGhost(AuraApplication const* aurApp, uint8 mode, bool
     if (apply)
     {
         target->SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST);
-        target->m_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_GHOST);
-        target->m_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_GHOST);
+        target->_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_GHOST);
+        target->_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_GHOST);
     }
     else
     {
@@ -1840,8 +1848,8 @@ void AuraEffect::HandleAuraGhost(AuraApplication const* aurApp, uint8 mode, bool
             return;
 
         target->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST);
-        target->m_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE);
-        target->m_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE);
+        target->_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE);
+        target->_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE);
     }
 }
 
@@ -2891,7 +2899,7 @@ void AuraEffect::HandleAuraAllowFlight(AuraApplication const* aurApp, uint8 mode
     if (target->GetTypeId() == TYPEID_UNIT)
         target->SetFlying(apply);
 
-    if (Player* player = target->m_movedPlayer)
+    if (Player* player = target->_movedPlayer)
     {
         // allow flying
         WorldPacket data;
@@ -3140,9 +3148,15 @@ void AuraEffect::HandleModPossess(AuraApplication const* aurApp, uint8 mode, boo
     }
 
     if (apply)
-        target->SetCharmedBy(caster, CHARM_TYPE_POSSESS, aurApp);
+    {
+        if (target->SetCharmedBy(caster, CHARM_TYPE_POSSESS, aurApp))
+            caster->ToPlayer()->SetMover(target);
+    }
     else
+    {
         target->RemoveCharmedBy(caster);
+        caster->ToPlayer()->SetMover(caster);
+    }
 }
 
 // only one spell has this aura
@@ -3170,11 +3184,13 @@ void AuraEffect::HandleModPossessPet(AuraApplication const* aurApp, uint8 mode, 
         if (caster->ToPlayer()->GetPet() != pet)
             return;
 
-        pet->SetCharmedBy(caster, CHARM_TYPE_POSSESS, aurApp);
+        if (pet->SetCharmedBy(caster, CHARM_TYPE_POSSESS, aurApp))
+            caster->ToPlayer()->SetMover(pet);
     }
     else
     {
         pet->RemoveCharmedBy(caster);
+        caster->ToPlayer()->SetMover(caster);
 
         if (!pet->IsWithinDistInMap(caster, pet->GetMap()->GetVisibilityRange()))
             pet->Remove(PET_SLOT_ACTUAL_PET_SLOT, true);
@@ -3309,7 +3325,7 @@ void AuraEffect::HandleAuraModIncreaseFlightSpeed(AuraApplication const* aurApp,
         // do not remove unit flag if there are more than this auraEffect of that kind on unit on unit
         if (mode & AURA_EFFECT_HANDLE_SEND_FOR_CLIENT_MASK && (apply || (!target->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) && !target->HasAuraType(SPELL_AURA_FLY))))
         {
-            if (Player* player = target->m_movedPlayer)
+            if (Player* player = target->_movedPlayer)
             {
                 WorldPacket data;
                 if (apply)
@@ -4892,11 +4908,7 @@ void AuraEffect::HandleAuraDummy(AuraApplication const* aurApp, uint8 mode, bool
                     break;
                 case 46361:                                     // Reinforced Net
                     if (caster)
-                    {
-                        float currentGroundLevel = target->GetBaseMap()->GetHeight(target->GetPositionX(), target->GetPositionY(), MAX_HEIGHT);
-                        if (target->GetPositionZ() > currentGroundLevel)
-                            target->GetMotionMaster()->MoveFall(currentGroundLevel);
-                    }
+                        target->GetMotionMaster()->MoveFall();
                     break;
                 case 49028:
                     if (caster)
@@ -5803,8 +5815,8 @@ void AuraEffect::HandleAuraModFakeInebriation(AuraApplication const* aurApp, uin
 
     if (apply)
     {
-        target->m_invisibilityDetect.AddFlag(INVISIBILITY_DRUNK);
-        target->m_invisibilityDetect.AddValue(INVISIBILITY_DRUNK, GetAmount());
+        target->_invisibilityDetect.AddFlag(INVISIBILITY_DRUNK);
+        target->_invisibilityDetect.AddValue(INVISIBILITY_DRUNK, GetAmount());
 
         if (target->GetTypeId() == TYPEID_PLAYER)
         {
@@ -5816,7 +5828,7 @@ void AuraEffect::HandleAuraModFakeInebriation(AuraApplication const* aurApp, uin
     {
         bool removeDetect = !target->HasAuraType(SPELL_AURA_MOD_FAKE_INEBRIATE);
 
-        target->m_invisibilityDetect.AddValue(INVISIBILITY_DRUNK, -GetAmount());
+        target->_invisibilityDetect.AddValue(INVISIBILITY_DRUNK, -GetAmount());
 
         if (target->GetTypeId() == TYPEID_PLAYER)
         {
@@ -5828,7 +5840,7 @@ void AuraEffect::HandleAuraModFakeInebriation(AuraApplication const* aurApp, uin
         }
 
         if (removeDetect)
-            target->m_invisibilityDetect.DelFlag(INVISIBILITY_DRUNK);
+            target->_invisibilityDetect.DelFlag(INVISIBILITY_DRUNK);
     }
 
     // call functions which may have additional effects after chainging state of unit

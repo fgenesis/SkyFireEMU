@@ -30,12 +30,12 @@
 
 DynamicObject::DynamicObject(bool isWorldObject) : WorldObject(isWorldObject), _aura(NULL), _removedAura(NULL), _caster(NULL), _duration(0), _isViewpoint(false)
 {
-    m_objectType |= TYPEMASK_DYNAMICOBJECT;
-    m_objectTypeId = TYPEID_DYNAMICOBJECT;
+    _objectType |= TYPEMASK_DYNAMICOBJECT;
+    _objectTypeId = TYPEID_DYNAMICOBJECT;
 
     m_updateFlag = (UPDATEFLAG_HAS_POSITION | UPDATEFLAG_POSITION);
 
-    m_valuesCount = DYNAMICOBJECT_END;
+    _valuesCount = DYNAMICOBJECT_END;
 }
 
 DynamicObject::~DynamicObject()

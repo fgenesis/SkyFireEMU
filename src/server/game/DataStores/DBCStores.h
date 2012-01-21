@@ -42,6 +42,8 @@ WMOAreaTableEntry const* GetWMOAreaTableEntryByTripple(int32 rootid, int32 adtid
 
 uint32 GetVirtualMapForMapAndZone(uint32 mapid, uint32 zoneId);
 
+const std::string* GetRandomCharacterName(uint8 race, uint8 gender);
+
 enum ContentLevels
 {
 	CONTENT_1_60 = 0,
@@ -132,12 +134,15 @@ extern DBCStorage <ItemLimitCategoryEntry>       sItemLimitCategoryStore;
 extern DBCStorage <ItemRandomPropertiesEntry>    sItemRandomPropertiesStore;
 extern DBCStorage <ItemRandomSuffixEntry>        sItemRandomSuffixStore;
 extern DBCStorage <ItemReforgeEntry>             sItemReforgeStore;
+extern DBCStorage <ItemCurrencyCostEntry>        sItemCurrencyCostStore;
 extern DBCStorage <ItemSetEntry>                 sItemSetStore;
 extern DBCStorage <LFGDungeonEntry>              sLFGDungeonStore;
 //extern DBCStorage <LiquidTypeEntry>              sLiquidTypeStore;
 extern DBCStorage <LockEntry>                    sLockStore;
 extern DBCStorage <MailTemplateEntry>            sMailTemplateStore;
 extern DBCStorage <MapEntry>                     sMapStore;
+extern DBCStorage <NameGenEntry>                 sNameGenStore;
+extern DBCStorage <PhaseEntry>                   sPhaseStore;
 //extern DBCStorage <MapDifficultyEntry>           sMapDifficultyStore; -- use GetMapDifficultyData insteed
 extern MapDifficultyMap                          sMapDifficultyMap;
 extern DBCStorage <MovieEntry>                   sMovieStore;

@@ -135,7 +135,7 @@ bool Player::UpdateStats(Stats stat)
 
 void Player::ApplySpellPowerBonus(int32 amount, bool apply)
 {
-    apply = _ModifyUInt32(apply, m_baseSpellPower, amount);
+    apply = _ModifyUInt32(apply, _baseSpellPower, amount);
 
     // For speed just update for client
     ApplyModUInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, amount, apply);
@@ -237,11 +237,11 @@ void Player::UpdateSpellPower()
     uint32 spellPowerFromIntellect = GetStat(STAT_INTELLECT) - 10;
 
     //apply only the diff between the last and the new value.
-    ApplyModUInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, spellPowerFromIntellect - m_spellPowerFromIntellect, true);
+    ApplyModUInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, spellPowerFromIntellect - _spellPowerFromIntellect, true);
     for (int i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
-        ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + i, spellPowerFromIntellect - m_spellPowerFromIntellect, true);
+        ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + i, spellPowerFromIntellect - _spellPowerFromIntellect, true);
 
-    m_spellPowerFromIntellect = spellPowerFromIntellect;
+    _spellPowerFromIntellect = spellPowerFromIntellect;
 }
 
 float Player::GetHealthBonusFromStamina()
@@ -810,13 +810,13 @@ void Player::UpdateExpertise(WeaponAttackType attack)
 
 void Player::ApplyManaRegenBonus(int32 amount, bool apply)
 {
-    _ModifyUInt32(apply, m_baseManaRegen, amount);
+    _ModifyUInt32(apply, _baseManaRegen, amount);
     UpdateManaRegen();
 }
 
 void Player::ApplyHealthRegenBonus(int32 amount, bool apply)
 {
-    _ModifyUInt32(apply, m_baseHealthRegen, amount);
+    _ModifyUInt32(apply, _baseHealthRegen, amount);
 }
 
 void Player::UpdateManaRegen()
@@ -889,7 +889,7 @@ void Player::UpdateMastery()
 {
     if (HasAuraType(SPELL_AURA_MASTERY))
     {
-        SetInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CR_MASTERY, m_baseRatingValue[CR_MASTERY]);
+        SetInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CR_MASTERY, _baseRatingValue[CR_MASTERY]);
         SetFloatValue(PLAYER_MASTERY, GetMasteryPoints());
     }
 }
@@ -1131,11 +1131,11 @@ bool Guardian::UpdateStats(Stats stat)
                         break;
                 }
 
-                PetSpellMap::const_iterator itr = (ToPet()->m_spells.find(62758)); // Wild Hunt rank 1
-                if (itr == ToPet()->m_spells.end())
-                    itr = ToPet()->m_spells.find(62762);                            // Wild Hunt rank 2
+                PetSpellMap::const_iterator itr = (ToPet()->_spells.find(62758)); // Wild Hunt rank 1
+                if (itr == ToPet()->_spells.end())
+                    itr = ToPet()->_spells.find(62762);                            // Wild Hunt rank 2
 
-                if (itr != ToPet()->m_spells.end())                                 // If pet has Wild Hunt
+                if (itr != ToPet()->_spells.end())                                 // If pet has Wild Hunt
                 {
                     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first); // Then get the SpellProto and add the dummy effect value
                     AddPctN(mod, spellInfo->Effects[EFFECT_0].CalcValue());
@@ -1195,7 +1195,7 @@ void Guardian::UpdateResistances(uint32 school)
 
         // hunter and warlock pets gain 40% of owner's resistance
         if (isPet())
-            value += float(CalculatePctN(m_owner->GetResistance(SpellSchools(school)), 40));
+            value += float(CalculatePctN(_owner->GetResistance(SpellSchools(school)), 40));
 
         SetResistance(SpellSchools(school), int32(value));
     }
@@ -1227,7 +1227,7 @@ void Guardian::UpdateArmor()
             mod = 0.6f;
             break;
         }
-        bonus_armor = mod * float(m_owner->GetArmor());
+        bonus_armor = mod * float(_owner->GetArmor());
     }
 
     value  = GetModifierValue(unitMod, BASE_VALUE);
@@ -1311,11 +1311,11 @@ void Guardian::UpdateAttackPowerAndDamage(bool ranged)
             float mod = 1.0f;                                                 //Hunter contribution modifier
             if (isPet())
             {
-                PetSpellMap::const_iterator itr = ToPet()->m_spells.find(62758);    //Wild Hunt rank 1
-                if (itr == ToPet()->m_spells.end())
-                    itr = ToPet()->m_spells.find(62762);                            //Wild Hunt rank 2
+                PetSpellMap::const_iterator itr = ToPet()->_spells.find(62758);    //Wild Hunt rank 1
+                if (itr == ToPet()->_spells.end())
+                    itr = ToPet()->_spells.find(62762);                            //Wild Hunt rank 2
 
-                if (itr != ToPet()->m_spells.end())                                 // If pet has Wild Hunt
+                if (itr != ToPet()->_spells.end())                                 // If pet has Wild Hunt
                 {
                     SpellInfo const* sProto = sSpellMgr->GetSpellInfo(itr->first); // Then get the SpellProto and add the dummy effect value
                     mod += CalculatePctN(1.0f, sProto->Effects[1].CalcValue());
@@ -1394,19 +1394,19 @@ void Guardian::UpdateDamagePhysical(WeaponAttackType attType)
         return;
 
     float bonusDamage = 0.0f;
-    if (m_owner->GetTypeId() == TYPEID_PLAYER)
+    if (_owner->GetTypeId() == TYPEID_PLAYER)
     {
         //force of nature
         if (GetEntry() == ENTRY_TREANT)
         {
-            int32 spellDmg = int32(m_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_NATURE)) - m_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_NATURE);
+            int32 spellDmg = int32(_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_NATURE)) - _owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_NATURE);
             if (spellDmg > 0)
                 bonusDamage = spellDmg * 0.09f;
         }
         //greater fire elemental
         else if (GetEntry() == ENTRY_FIRE_ELEMENTAL)
         {
-            int32 spellDmg = int32(m_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_FIRE)) - m_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_FIRE);
+            int32 spellDmg = int32(_owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_FIRE)) - _owner->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_FIRE);
             if (spellDmg > 0)
                 bonusDamage = spellDmg * 0.4f;
         }

@@ -777,7 +777,7 @@ class spell_gen_parachute_ic : public SpellScriptLoader
                 if (!target->ToPlayer())
                     return;
 
-                if (target->ToPlayer()->m_movementInfo.fallTime > 2000)
+                if (target->ToPlayer()->_movementInfo.fallTime > 2000)
                     target->CastSpell(target, SPELL_PARACHUTE_IC, true);
             }
 
@@ -1381,7 +1381,16 @@ class spell_gen_luck_of_the_draw : public SpellScriptLoader
                 if (GetUnitOwner()->GetTypeId() != TYPEID_PLAYER)
                     return;
 
-                LFGDungeonEntry const* randomDungeon = sLFGDungeonStore.LookupEntry(*(sLFGMgr->GetSelectedDungeons(GetUnitOwner()->GetGUID()).begin()));
+                const LfgDungeonSet dungeons = sLFGMgr->GetSelectedDungeons(GetUnitOwner()->GetGUID());
+                LfgDungeonSet::const_iterator itr = dungeons.begin();
+
+                if (itr == dungeons.end())
+                {
+                    Remove(AURA_REMOVE_BY_DEFAULT);
+                    return;
+                }
+
+                LFGDungeonEntry const* randomDungeon = sLFGDungeonStore.LookupEntry(*itr);
                 Group* group = GetUnitOwner()->ToPlayer()->GetGroup();
                 Map const* map = GetUnitOwner()->GetMap();
                 if (group && group->isLFGGroup())

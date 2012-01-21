@@ -189,7 +189,7 @@ class Pet : public Guardian
         bool removeSpell(uint32 spell_id, bool learn_prev, bool clear_ab = true);
         void CleanupActionBar();
 
-        PetSpellMap     m_spells;
+        PetSpellMap     _spells;
         AutoSpellList   m_autospells;
 
         void InitPetCreateSpells();
@@ -202,29 +202,29 @@ class Pet : public Guardian
         uint8 GetFreeTalentPoints() { return GetByteValue(UNIT_FIELD_BYTES_1, 1); }
         void SetFreeTalentPoints(uint8 points) { SetByteValue(UNIT_FIELD_BYTES_1, 1, points); }
 
-        uint32  m_usedTalentCount;
+        uint32  _usedTalentCount;
 
-        uint64 GetAuraUpdateMaskForRaid() const { return m_auraRaidUpdateMask; }
-        void SetAuraUpdateMaskForRaid(uint8 slot) { m_auraRaidUpdateMask |= (uint64(1) << slot); }
-        void ResetAuraUpdateMaskForRaid() { m_auraRaidUpdateMask = 0; }
+        uint64 GetAuraUpdateMaskForRaid() const { return _auraRaidUpdateMask; }
+        void SetAuraUpdateMaskForRaid(uint8 slot) { _auraRaidUpdateMask |= (uint64(1) << slot); }
+        void ResetAuraUpdateMaskForRaid() { _auraRaidUpdateMask = 0; }
 
-        DeclinedName const* GetDeclinedNames() const { return m_declinedname; }
+        DeclinedName const* GetDeclinedNames() const { return _declinedname; }
 
         bool    m_removed;                                  // prevent overwrite pet state in DB at next Pet::Update if pet already removed(saved)
 
-        Player* GetOwner() { return m_owner; }
+        Player* GetOwner() { return _owner; }
 
         PetTalentType GetTalentType();
     protected:
-        Player* m_owner;
+        Player* _owner;
         uint32  m_happinessTimer;
         PetType m_petType;
         int32   m_duration;                                 // time until unsummon (used mostly for summoned guardians and not used for controlled pets)
-        uint64  m_auraRaidUpdateMask;
+        uint64  _auraRaidUpdateMask;
         bool    m_loading;
-        uint32  m_regenTimer;
+        uint32  _regenTimer;
 
-        DeclinedName *m_declinedname;
+        DeclinedName *_declinedname;
 
     private:
         void SaveToDB(uint32, uint8, uint32)                // override of Creature::SaveToDB     - must not be called
