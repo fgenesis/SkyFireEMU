@@ -920,7 +920,7 @@ void AuraEffect::CalculateSpellMod(SpellInfo const *spellInfo, Unit * target)
             {
                 m_spellmod = new SpellModifier(GetBase(), this);
                 m_spellmod->op = SpellModOp(GetMiscValue());
-                // ASSERT(m_spellmod->op < MAX_SPELLMOD); // FG: bullshit
+                ASSERT(m_spellmod->op < MAX_SPELLMOD);
 
                 m_spellmod->type = SpellModType(GetAuraType());    // SpellModType value == spell aura types
                 m_spellmod->spellId = GetId();
