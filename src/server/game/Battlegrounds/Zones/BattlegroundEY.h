@@ -221,6 +221,8 @@ enum EYBattlegroundObjectTypes
 #define BG_EY_NotEYWeekendHonorTicks    330
 #define BG_EY_EYWeekendHonorTicks       200
 
+#define EY_EVENT_START_BATTLE           13180 // Achievement: Flurry
+
 enum BG_EY_Score
 {
     BG_EY_WARNING_NEAR_VICTORY_SCORE    = 1400,
@@ -258,9 +260,9 @@ struct BattlegroundEYPointIconsStruct
 
 // x, y, z, o
 const float BG_EY_TriggerPositions[EY_POINTS_MAX][4] = {
-    {2044.28f, 1729.68f, 1189.96f, 0.017453f},  // FEL_REAVER center
-    {2048.83f, 1393.65f, 1194.49f, 0.20944f},   // BLOOD_ELF center
-    {2286.56f, 1402.36f, 1197.11f, 3.72381f},   // DRAENEI_RUINS center
+    {2044.28f, 1729.68f, 1189.96f, 0.017453f}, // FEL_REAVER center
+    {2048.83f, 1393.65f, 1194.49f, 0.20944f},  // BLOOD_ELF center
+    {2286.56f, 1402.36f, 1197.11f, 3.72381f},  // DRAENEI_RUINS center
     {2284.48f, 1731.23f, 1189.99f, 2.89725f}    // MAGE_TOWER center
 };
 

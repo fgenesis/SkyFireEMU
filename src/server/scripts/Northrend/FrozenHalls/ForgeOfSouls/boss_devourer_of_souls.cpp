@@ -114,7 +114,7 @@ struct outroPosition
     { { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f } }
 };
 
-Position const CrucibleSummonPos = {5672.294f,2520.686f, 713.4386f, 0.9599311f};
+Position const CrucibleSummonPos = {5672.294f, 2520.686f, 713.4386f, 0.9599311f};
 
 #define DATA_THREE_FACED        1
 
@@ -306,6 +306,7 @@ class boss_devourer_of_souls : public CreatureScript
                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                             {
                                 me->SetOrientation(me->GetAngle(target));
+                                me->SendMovementFlagUpdate();
                                 DoCast(me, SPELL_WAILING_SOULS_BEAM);
                             }
 
@@ -332,6 +333,7 @@ class boss_devourer_of_souls : public CreatureScript
                         case EVENT_WAILING_SOULS_TICK:
                             beamAngle += beamAngleDiff;
                             me->SetOrientation(beamAngle);
+                            me->SendMovementFlagUpdate();
                             me->StopMoving();
 
                             DoCast(me, SPELL_WAILING_SOULS);

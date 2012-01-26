@@ -3296,7 +3296,7 @@ void Player::InitStatsForLevel(bool reapplyMods)
 
     // save new stats
     for (uint8 i = POWER_MANA; i < MAX_POWERS; ++i)
-        SetMaxPower(Powers(i),  GetCreatePowers(Powers(i)));
+        SetMaxPower(Powers(i), GetCreatePowers(Powers(i)));
 
     SetMaxHealth(classInfo.basehealth);                     // stamina bonus will applied later
 
@@ -4198,8 +4198,19 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank)
 
     if (spell_id == 46917 && _canTitanGrip)
         SetCanTitanGrip(false);
-    if (spell_id == 674 && _canDualWield)
-        SetCanDualWield(false);
+    if (_canDualWield)
+    {
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id);
+        if (spellInfo->IsPassive())
+        {
+            for (int i = 0; i < MAX_SPELL_EFFECTS; ++i)
+                if (spellInfo->Effects[i].Effect == SPELL_EFFECT_DUAL_WIELD)
+                {
+                    SetCanDualWield(false);
+                    break;
+                }
+        }
+    }
 
     if (sWorld->getBoolConfig(CONFIG_OFFHAND_CHECK_AT_SPELL_UNLEARN))
         AutoUnequipOffhandIfNeed();
@@ -7460,6 +7471,9 @@ void Player::ModifyCurrency(uint32 id, int32 count, bool force)
         // probably excessive checks
         if (IsInWorld() && !GetSession()->PlayerLoading())
         {
+            // if (count > 0)
+              // GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CURRENCY, id, count);    // todo
+
             WorldPacket packet(SMSG_UPDATE_CURRENCY, 12);
             packet << uint32(id);
             packet << uint32(weekCap ? (newWeekCount / PLAYER_CURRENCY_PRECISION) : 0);
@@ -8066,12 +8080,12 @@ void Player::ApplyReforgedStats(Item* item, bool apply)
     {
         if (proto->ItemStat[i].ItemStatValue == 0)
             continue;
-        if(proto->ItemStat[i].ItemStatType != stats->SourceStat)
+        if (proto->ItemStat[i].ItemStatType != stats->SourceStat)
             continue;
 
         int32 val = int32((proto->ItemStat[i].ItemStatValue * stats->Scaling1)*stats->Scaling2);
 
-        if(val == 0)
+        if (val == 0)
             return;
 
         switch (stats->DestinationStat)
@@ -8177,7 +8191,7 @@ void Player::ApplyReforgedStats(Item* item, bool apply)
                 ApplyRatingMod(CR_EXPERTISE, int32(val), apply);
                 break;
             case ITEM_MOD_ATTACK_POWER:
-                if(float(val) > 0.f)
+                if (float(val) > 0.f)
                 {
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_POS, TOTAL_VALUE, float(val), apply);
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_POS, TOTAL_VALUE, float(val), apply);
@@ -8189,7 +8203,7 @@ void Player::ApplyReforgedStats(Item* item, bool apply)
                 }
                 break;
             case ITEM_MOD_RANGED_ATTACK_POWER:
-                if(float(val) > 0.f)
+                if (float(val) > 0.f)
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_POS, TOTAL_VALUE, float(val), apply);
                 else
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_NEG, TOTAL_VALUE, -float(val), apply);
@@ -8323,7 +8337,7 @@ void Player::ApplyReforgedStats(Item* item, bool apply)
                 ApplyRatingMod(CR_EXPERTISE, int32(val), apply);
                 break;
             case ITEM_MOD_ATTACK_POWER:
-                if(float(val) > 0.f)
+                if (float(val) > 0.f)
                 {
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_POS, TOTAL_VALUE, float(val), apply);
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_POS, TOTAL_VALUE, float(val), apply);
@@ -8335,7 +8349,7 @@ void Player::ApplyReforgedStats(Item* item, bool apply)
                 }
                 break;
             case ITEM_MOD_RANGED_ATTACK_POWER:
-                if(float(val) > 0.f)
+                if (float(val) > 0.f)
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_POS, TOTAL_VALUE, float(val), apply);
                 else
                     HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED_NEG, TOTAL_VALUE, -float(val), apply);
@@ -9116,12 +9130,12 @@ void Player::_RemoveAllItemMods()
 
             // item set bonuses not dependent from item broken state
             if (proto->ItemSet)
-                RemoveItemsSetItem(this,proto);
+                RemoveItemsSetItem(this, proto);
 
             if (_items[i]->IsBroken() || !CanUseAttackType(GetAttackBySlot(i)))
                 continue;
 
-            _ApplyItemMods(_items[i],i,false);
+            _ApplyItemMods(_items[i],i, false);
         }
     }
 
@@ -9520,7 +9534,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
     {
         if (Item *item = GetItemByGuid(guid))
         {
-			objEntry = item->GetTemplate()->ItemId;
+            objEntry = item->GetTemplate()->ItemId;
             objType = 2;
         }
     }
@@ -9536,7 +9550,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
     {
         if (GameObject *gobject = GetMap()->GetGameObject(guid))
         {
-			objEntry = gobject->GetGOInfo()->entry;
+            objEntry = gobject->GetGOInfo()->entry;
             objType = 3;
         }
     }
@@ -10443,7 +10457,7 @@ uint8 Player::FindEquipSlot(ItemTemplate const* proto, uint32 slot, bool swap) c
             break;
         case INVTYPE_RELIC:
         {
-            if(playerClass == CLASS_PALADIN || playerClass == CLASS_DRUID||
+            if (playerClass == CLASS_PALADIN || playerClass == CLASS_DRUID||
                playerClass == CLASS_SHAMAN || playerClass == CLASS_DEATH_KNIGHT)
                 slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
@@ -12556,7 +12570,7 @@ Item* Player::StoreItem(ItemPosCountVec const& dest, Item* pItem, bool update)
     }
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM, entry);
 
-    if(Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
+    if (Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
         guild->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM, this, entry, 1);
 
     return lastItem;
@@ -15160,7 +15174,7 @@ bool Player::CanTakeQuest(Quest const *quest, bool msg)
         && SatisfyQuestPreviousQuest(quest, msg) && SatisfyQuestTimed(quest, msg)
         && SatisfyQuestNextChain(quest, msg) && SatisfyQuestPrevChain(quest, msg)
         && SatisfyQuestDay(quest, msg) && SatisfyQuestWeek(quest, msg)
-        && SatisfyQuestSeasonal(quest,msg) && !DisableMgr::IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), this)
+        && SatisfyQuestSeasonal(quest, msg) && !DisableMgr::IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), this)
         && SatisfyQuestConditions(quest, msg);
 }
 
@@ -15284,7 +15298,7 @@ bool Player::CanRewardQuest(Quest const *quest, bool msg)
         return false;
 
     // daily quest can't be rewarded (25 daily quest already completed)
-    if (!SatisfyQuestDay(quest, true) || !SatisfyQuestWeek(quest, true) || !SatisfyQuestSeasonal(quest,true))
+    if (!SatisfyQuestDay(quest, true) || !SatisfyQuestWeek(quest, true) || !SatisfyQuestSeasonal(quest, true))
         return false;
 
     // rewarded and not repeatable quest (only cheating case, then ignore without message)
@@ -15605,7 +15619,7 @@ void Player::RewardQuest(Quest const *quest, uint32 reward, Object* questGiver, 
         {
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DAILY_QUEST, quest_id);
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DAILY_QUEST_DAILY, quest_id);
-            if(Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
+            if (Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
                 guild->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DAILY_QUEST, this, quest_id);
         }
     }
@@ -15976,7 +15990,7 @@ bool Player::SatisfyQuestExclusiveGroup(Quest const* qInfo, bool msg)
 
         // not allow have daily quest if daily quest from exclusive group already recently completed
         Quest const* Nquest = sObjectMgr->GetQuestTemplate(exclude_Id);
-        if (!SatisfyQuestDay(Nquest, false) || !SatisfyQuestWeek(Nquest, false) || !SatisfyQuestSeasonal(Nquest,false))
+        if (!SatisfyQuestDay(Nquest, false) || !SatisfyQuestWeek(Nquest, false) || !SatisfyQuestSeasonal(Nquest, false))
         {
             if (msg)
                 SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
@@ -16425,7 +16439,7 @@ void Player::KilledMonsterCredit(uint32 entry, uint64 guid)
 
     GetAchievementMgr().StartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_CREATURE, real_entry);   // MUST BE CALLED FIRST
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, real_entry, addkillcount, guid ? GetMap()->GetCreature(guid) : NULL);
-    if(Creature* killed = GetMap()->GetCreature(guid))
+    if (Creature* killed = GetMap()->GetCreature(guid))
     {
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, killed->GetCreatureInfo()->type, addkillcount, killed);
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE_GUILD, killed->GetCreatureInfo()->type, addkillcount, killed);
@@ -17062,10 +17076,10 @@ void Player::_LoadBGData(PreparedQueryResult result)
 
     _bgData.bgInstanceID = fields[0].GetUInt32();
     _bgData.bgTeam       = fields[1].GetUInt16();
-    _bgData.joinPos      = WorldLocation(fields[6].GetUInt16(),    // Map
-                                          fields[2].GetFloat(),     // X
-                                          fields[3].GetFloat(),     // Y
-                                          fields[4].GetFloat(),     // Z
+    _bgData.joinPos      = WorldLocation(fields[6].GetUInt16(),   // Map
+                                          fields[2].GetFloat(),    // X
+                                          fields[3].GetFloat(),    // Y
+                                          fields[4].GetFloat(),    // Z
                                           fields[5].GetFloat());    // Orientation
     _bgData.taxiPath[0]  = fields[7].GetUInt32();
     _bgData.taxiPath[1]  = fields[8].GetUInt32();
@@ -19145,7 +19159,7 @@ void Player::SaveToDB(bool create /*=false*/)
         stmt->setUInt32(index++, _Played_time[PLAYED_TIME_LEVEL]);
         stmt->setFloat(index++, finiteAlways(_rest_bonus));
         stmt->setUInt32(index++, uint32(time(NULL)));
-        stmt->setUInt8(index++,  (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) ? 1 : 0));
+        stmt->setUInt8(index++, (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) ? 1 : 0));
         //save, far from tavern/city
         //save, but in tavern/city
         stmt->setUInt32(index++, _resetTalentsCost);
@@ -19253,7 +19267,7 @@ void Player::SaveToDB(bool create /*=false*/)
         stmt->setUInt32(index++, _Played_time[PLAYED_TIME_LEVEL]);
         stmt->setFloat(index++, finiteAlways(_rest_bonus));
         stmt->setUInt32(index++, uint32(time(NULL)));
-        stmt->setUInt8(index++,  (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) ? 1 : 0));
+        stmt->setUInt8(index++, (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) ? 1 : 0));
         //save, far from tavern/city
         //save, but in tavern/city
         stmt->setUInt32(index++, _resetTalentsCost);
@@ -19851,28 +19865,27 @@ void Player::_SaveStats(SQLTransaction& trans)
 
     trans->PAppend("DELETE FROM character_stats WHERE guid = '%u'", GetGUIDLow());
     std::ostringstream ss;
-    ss << "INSERT INTO character_stats (guid, maxhealth, maxpower1, maxpower2, maxpower3, maxpower4, maxpower5, maxpower6, maxpower7, "
-        "strength, agility, stamina, intellect, spirit, armor, resHoly, resFire, resNature, resFrost, resShadow, resArcane, "
-        "blockPct, dodgePct, parryPct, critPct, rangedCritPct, spellCritPct, attackPower, rangedAttackPower, spellPower, resilience) VALUES ("
-        << GetGUIDLow() << ','
-        << GetMaxHealth() << ',';
+    ss << "INSERT INTO character_stats (guid, maxhealth, maxpower1, maxpower2, maxpower3, maxpower4, maxpower5, maxpower6, maxpower7, maxpower8, maxpower9, maxpower10, "
+    "strength, agility, stamina, intellect, spirit, armor, resHoly, resFire, resNature, resFrost, resShadow, resArcane, "
+    "blockPct, dodgePct, parryPct, critPct, rangedCritPct, spellCritPct, attackPower, rangedAttackPower, spellPower, resilience) VALUES ("
+    << GetGUIDLow() << ', '
+    << GetMaxHealth() << ', ';
     for (uint8 i = 0; i < MAX_POWERS; ++i)
-        ss << GetMaxPower(Powers(i)) << ',';
+        ss << GetMaxPower(Powers(i)) << ', ';
     for (uint8 i = 0; i < MAX_STATS; ++i)
-        ss << GetStat(Stats(i)) << ',';
+        ss << GetStat(Stats(i)) << ', ';
     // armor + school resistances
     for (int i = 0; i < MAX_SPELL_SCHOOL; ++i)
-        ss << GetResistance(SpellSchools(i)) << ',';
-    ss << GetFloatValue(PLAYER_BLOCK_PERCENTAGE) << ','
-       << GetFloatValue(PLAYER_DODGE_PERCENTAGE) << ','
-       << GetFloatValue(PLAYER_PARRY_PERCENTAGE) << ','
-       << GetFloatValue(PLAYER_CRIT_PERCENTAGE) << ','
-       << GetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE) << ','
-       << GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1) << ','
-       << GetUInt32Value(UNIT_FIELD_ATTACK_POWER) << ','
-       << GetUInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) << ','
-       << GetBaseSpellPowerBonus() << ','
-       << GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CR_CRIT_TAKEN_SPELL) << ')';
+        ss << GetResistance(SpellSchools(i)) << ', ';
+    ss << GetFloatValue(PLAYER_BLOCK_PERCENTAGE) << ', '
+            << GetFloatValue(PLAYER_DODGE_PERCENTAGE) << ', '
+            << GetFloatValue(PLAYER_PARRY_PERCENTAGE) << ', '
+            << GetFloatValue(PLAYER_CRIT_PERCENTAGE) << ', '
+            << GetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE) << ', '
+            << GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1) << ', '
+            << GetUInt32Value(UNIT_FIELD_ATTACK_POWER) << ', '
+            << GetUInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) << ', '
+            << GetBaseSpellPowerBonus() << ')';
     trans->Append(ss.str().c_str());
 }
 
@@ -20263,7 +20276,7 @@ void Player::RemovePet(Pet* pet, PetSlot mode, bool returnreagent)
     // only if current pet in slot
     pet->SavePetToDB(mode);
 
-    if(pet->getPetType() != HUNTER_PET)
+    if (pet->getPetType() != HUNTER_PET)
         SetMinion(pet, false, PET_SLOT_UNK_SLOT);
     else
         SetMinion(pet, false, PET_SLOT_ACTUAL_PET_SLOT);
@@ -22310,7 +22323,7 @@ void Player::SendPetGUIDs()
     // The current handlind of the pet system wont allow to send them all,
     // because the pet guids are generated at runtime when the pet is summoned
     // ToDo/FixMe: Rewrite the pet system and fix this packet
-    if(Pet* pet = GetPet())
+    if (Pet* pet = GetPet())
     {
         WorldPacket data(SMSG_PET_GUIDS, 4 + (8 * 1));
         data << uint32(1);
@@ -22377,7 +22390,7 @@ void Player::SendInitialPacketsAfterAddToMap()
     else if (GetRaidDifficulty() != GetStoredRaidDifficulty())
         SendRaidDifficulty(GetGroup() != NULL);
 
-    if(Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
+    if (Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
         guild->GetAchievementMgr().SendAllAchievementData(); // must be after add to map
 
     SendPetGUIDs();
@@ -23751,7 +23764,7 @@ void Player::InitGlyphsForLevel()
 
     if (level >= 25)
         value |= 1 | 2 | 64;
-    if(level >= 50)
+    if (level >= 50)
         value |= 4 | 8 | 128;
     if (level >= 75)
         value |= 16 | 32 | 256;
@@ -24381,7 +24394,7 @@ void Player::UpdateAchievementCriteria(AchievementCriteriaTypes type, uint32 mis
 {
     GetAchievementMgr().UpdateAchievementCriteria(type, this, miscValue1, miscValue2, unit);
 
-    if(Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
+    if (Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
         guild->GetAchievementMgr().UpdateAchievementCriteria(type, this, miscValue1, miscValue2, unit);
 }
 
@@ -24410,7 +24423,7 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank, bool one)
     if (!talentTabInfo)
         return;
 
-    if(one && talentTabInfo->TalentTabID != GetTalentBranchSpec(_activeSpec))
+    if (one && talentTabInfo->TalentTabID != GetTalentBranchSpec(_activeSpec))
     {
         uint32 pointInBranchSpec = 0;
         for (PlayerTalentMap::iterator itr = _talents[_activeSpec]->begin(); itr != _talents[_activeSpec]->end(); itr++)
@@ -24418,18 +24431,18 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank, bool one)
             for (uint32 i = 0; i < sTalentStore.GetNumRows(); i++)
             {
                 const TalentEntry * thisTalent = sTalentStore.LookupEntry(i);
-                if(thisTalent)
+                if (thisTalent)
                 {
                     int thisrank = -1;
                     for (int j = 0; j < 5; j++)
-                        if(thisTalent->RankID[j] == itr->first)
+                        if (thisTalent->RankID[j] == itr->first)
                         {
                             thisrank = j;
                             break;
                         }
-                    if(thisrank != -1)
+                    if (thisrank != -1)
                     {
-                        if(thisTalent->TalentTab == GetTalentBranchSpec(_activeSpec))
+                        if (thisTalent->TalentTab == GetTalentBranchSpec(_activeSpec))
                         {
                             int8 curtalent_maxrank = -1;
                             for (int8 rank = MAX_TALENT_RANK-1; rank >= 0; --rank)
@@ -24440,14 +24453,14 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank, bool one)
                                     break;
                                 }
                             }
-                            if(curtalent_maxrank != -1 && thisrank == curtalent_maxrank)
+                            if (curtalent_maxrank != -1 && thisrank == curtalent_maxrank)
                                 pointInBranchSpec += curtalent_maxrank + 1;
                         }
                     }
                 }
             }
         }
-        if(pointInBranchSpec < 31)
+        if (pointInBranchSpec < 31)
             return;
     }
 
@@ -25254,7 +25267,7 @@ void Player::UpdateSpecCount(uint8 count)
     {
         _SaveActions(trans); // make sure the button list is cleaned up
         for (ActionButtonList::iterator itr = _actionButtons.begin(); itr != _actionButtons.end(); ++itr)
-            trans->PAppend("INSERT INTO character_action (guid,button,action,type,spec) VALUES ('%u', '%u', '%u', '%u', '%u')",
+            trans->PAppend("INSERT INTO character_action (guid, button, action, type, spec) VALUES ('%u', '%u', '%u', '%u', '%u')",
             GetGUIDLow(), uint32(itr->first), uint32(itr->second.GetAction()), uint32(itr->second.GetType()), 1);
     }
     // Delete spec data for removed spec.
@@ -25818,7 +25831,7 @@ void Player::UpdateMasteryAuras(uint32 branch)
     {
         // Remove all mastery spells
         for (int i = 0; i < MAX_TALENT_MASTERY_SPELLS; i ++)
-            if(tab->masterySpell[i] && HasSpell(tab->masterySpell[i]))
+            if (tab->masterySpell[i] && HasSpell(tab->masterySpell[i]))
             {
                 RemoveAura(tab->masterySpell[i]);
                 removeSpell(tab->masterySpell[i]);
@@ -25828,7 +25841,7 @@ void Player::UpdateMasteryAuras(uint32 branch)
 
     for (int i = 0; i < MAX_TALENT_MASTERY_SPELLS; i ++)
     {
-        if(tab->masterySpell[i] && !HasSpell(tab->masterySpell[i]))
+        if (tab->masterySpell[i] && !HasSpell(tab->masterySpell[i]))
         {
             sLog->outDebug(LOG_FILTER_SPELLS_AURAS, "Learn mastery %u to player %s", tab->masterySpell[i], GetName());
             learnSpell(tab->masterySpell[i], true);
@@ -25839,10 +25852,10 @@ void Player::UpdateMasteryAuras(uint32 branch)
     // Now remove all the mastery spells for all branch except this one
     for (uint32 i = 0; i < sTalentTabStore.GetNumRows(); ++i)
     {
-        if(branch != i)
+        if (branch != i)
             if (TalentTabEntry const* tabi = sTalentTabStore.LookupEntry(i))
                 for (uint32 j = 0; j < MAX_TALENT_MASTERY_SPELLS; j++)
-                    if(tabi->masterySpell[j] && HasSpell(tabi->masterySpell[j]))
+                    if (tabi->masterySpell[j] && HasSpell(tabi->masterySpell[j]))
                     {
                         RemoveAura(tab->masterySpell[i]);
                         removeSpell(tabi->masterySpell[j]);
@@ -25859,8 +25872,8 @@ void Player::RecalculateMasteryAuraEffects(uint32 branch)
 
     for (int i = 0; i < MAX_TALENT_MASTERY_SPELLS; i ++)
     {
-        if(tab->masterySpell[i])
-            if(Aura* aura = GetAura(tab->masterySpell[i]))
+        if (tab->masterySpell[i])
+            if (Aura* aura = GetAura(tab->masterySpell[i]))
                 aura->RecalculateAmountOfEffects();
     }
 }

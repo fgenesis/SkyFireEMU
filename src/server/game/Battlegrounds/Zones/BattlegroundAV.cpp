@@ -420,6 +420,9 @@ void BattlegroundAV::StartingEventOpenDoors()
 
     DoorOpen(BG_AV_OBJECT_DOOR_H);
     DoorOpen(BG_AV_OBJECT_DOOR_A);
+
+    // Achievement: The Alterac Blitz
+    StartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, AV_EVENT_START_BATTLE);
 }
 
 void BattlegroundAV::AddPlayer(Player* player)
@@ -1049,7 +1052,7 @@ void BattlegroundAV::EventPlayerAssaultsPoint(Player* player, uint32 object)
 
     //send a nice message to all :)
     char buf[256];
-    sprintf(buf, (IsTower(node)) ? GetSkyFireString(LANG_BG_AV_TOWER_ASSAULTED) : GetSkyFireString(LANG_BG_AV_GRAVE_ASSAULTED), GetNodeName(node),  (team == ALLIANCE) ?  GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
+    sprintf(buf, (IsTower(node)) ? GetSkyFireString(LANG_BG_AV_TOWER_ASSAULTED) : GetSkyFireString(LANG_BG_AV_GRAVE_ASSAULTED), GetNodeName(node), (team == ALLIANCE) ?  GetSkyFireString(LANG_BG_AV_ALLY) : GetSkyFireString(LANG_BG_AV_HORDE));
     Creature* creature = GetBGCreature(AV_CPLACE_HERALD);
     if (creature)
         YellToAll(creature, buf, LANG_UNIVERSAL);

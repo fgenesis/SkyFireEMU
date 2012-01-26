@@ -34,7 +34,6 @@ enum SpellEffIndex
 #define EFFECT_FIRST_FOUND 254
 #define EFFECT_ALL 255
 
-// loot modes for creatures and gameobjects, bitmask!
 enum LootModes
 {
     LOOT_MODE_DEFAULT                  = 1,
@@ -168,22 +167,23 @@ enum Stats
 };
 
 #define MAX_STATS                        5
-#define MAX_POWERS                       10
 
 enum Powers
 {
-    POWER_MANA                          = 0,
-    POWER_RAGE                          = 1,
-    POWER_FOCUS                         = 2,
-    POWER_ENERGY                        = 3,
-    POWER_HAPPINESS                     = 4,
-    POWER_RUNE                          = 5,
-    POWER_RUNIC_POWER                   = 6,
-    POWER_SOUL_SHARDS                   = 7,
-    POWER_ECLIPSE                       = 8,
-    POWER_HOLY_POWER                    = 9,
-    POWER_ALL                           = 127,    // default for class?
-    POWER_HEALTH                        = 0xFFFFFFFE    // (-2 as signed value)
+    POWER_MANA                            = 0,
+    POWER_RAGE                            = 1,
+    POWER_FOCUS                           = 2,
+    POWER_ENERGY                          = 3,
+    POWER_HAPPINESS                       = 4,
+    POWER_RUNE                            = 5,
+    POWER_RUNIC_POWER                     = 6,
+    POWER_SOULSHARDS                      = 7,
+    POWER_ECLIPSE                         = 8,
+    POWER_HOLY_POWER                      = 9,
+ // POWER_ALTERNATIVE                     = 10,  // Used in some quests
+    MAX_POWERS                            = 10,
+    POWER_ALL                             = 127, // default for class?
+    POWER_HEALTH                          = 0xFFFFFFFE // (-2 as signed value)
 };
 
 enum SpellSchools
@@ -835,11 +835,14 @@ enum SpellEffects
     SPELL_EFFECT_168                                = 168,
     SPELL_EFFECT_169                                = 169,
     SPELL_EFFECT_170                                = 170,
-    SPELL_EFFECT_171                                = 171,
-    SPELL_EFFECT_172                                = 172,
-    SPELL_EFFECT_173                                = 173,
-    SPELL_EFFECT_174                                = 174,
-    TOTAL_SPELL_EFFECTS                             = 175
+    SPELL_EFFECT_171                                = 171,  // Summons gamebject
+    SPELL_EFFECT_172                                = 172,  // Aoe ressurection
+    SPELL_EFFECT_173                                = 173,  // Guild tab unlocked (guild perk)
+    SPELL_EFFECT_174                                = 174,  //
+    SPELL_EFFECT_175                                = 175,  // Unused (4.0.6)
+    SPELL_EFFECT_176                                = 176,  // Some kind of sanctuary effect (Vanish)
+    SPELL_EFFECT_177                                = 177,
+    TOTAL_SPELL_EFFECTS                             = 178,
 };
 
 enum PetTameResult
@@ -2680,7 +2683,7 @@ enum SkillType
 
 inline SkillType SkillByLockType(LockType locktype)
 {
-    switch(locktype)
+    switch (locktype)
     {
         case LOCKTYPE_PICKLOCK:    return SKILL_LOCKPICKING;
         case LOCKTYPE_HERBALISM:   return SKILL_HERBALISM;
