@@ -1,7 +1,5 @@
 /*
  * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -771,10 +769,9 @@ void AchievementMgrBase::UpdateAchievementCriteria(AchievementCriteriaTypes type
                 // speedup for non-login case
                 if (miscValue1 && achievementCriteria->own_item.itemID != miscValue1)
                     continue;
-                SetCriteriaProgress(achievementCriteria, player->GetItemCount(achievementCriteria->own_item.itemID, true), player);
+                //SetCriteriaProgress(achievementCriteria, miscValue2, PROGRESS_ACCUMULATE);
                 break;
             case ACHIEVEMENT_CRITERIA_TYPE_WIN_RATED_ARENA:
-                // miscvalue1 contains the personal rating
                 if (!miscValue1)                            // no update at login
                     continue;
 

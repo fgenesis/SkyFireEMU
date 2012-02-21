@@ -409,7 +409,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 class mob_swarm_scarab : public CreatureScript
@@ -476,7 +475,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 class mob_nerubian_burrower : public CreatureScript
@@ -535,7 +533,7 @@ public:
                 {
                     me->RemoveAurasDueToSpell(SPELL_SUBMERGE_EFFECT);
                     DoCast(me, SPELL_EMERGE_EFFECT);
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
                     me->CombatStart(me->SelectNearestTarget());
                 }
                 else
@@ -543,7 +541,7 @@ public:
                     if (!me->HasAura(SPELL_PERMAFROST_HELPER))
                     {
                         DoCast(me, SPELL_SUBMERGE_EFFECT);
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
                         me->CombatStop();
                     }
                 }
@@ -553,7 +551,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 class mob_frost_sphere : public CreatureScript
@@ -647,7 +644,7 @@ public:
         void Reset()
         {
             // For an unknown reason this npc isn't recognize the Aura of Permafrost with this flags =/
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_OOC_NOT_ATTACKABLE);
+            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC);
             m_uiTargetGUID = 0;
         }
 
@@ -703,7 +700,6 @@ public:
             }
         }
     };
-
 };
 
 void AddSC_boss_anubarak_trial()

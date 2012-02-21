@@ -255,33 +255,6 @@ class spell_warl_everlasting_affliction : public SpellScriptLoader
         }
 };
 
-// 18541 Ritual of Doom Effect
-class spell_warl_ritual_of_doom_effect : public SpellScriptLoader
-{
-public:
-    spell_warl_ritual_of_doom_effect() : SpellScriptLoader("spell_warl_ritual_of_doom_effect") { }
-
-    class spell_warl_ritual_of_doom_effect_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_warl_ritual_of_doom_effect_SpellScript);
-
-        void HandleDummy(SpellEffIndex /*effIndex*/)
-        {
-            GetCaster()->CastSpell(GetCaster(), GetEffectValue(), true);
-        }
-
-        void Register()
-        {
-            OnEffectHit += SpellEffectFn(spell_warl_ritual_of_doom_effect_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-        }
-    };
-
-    SpellScript* GetSpellScript() const
-    {
-        return new spell_warl_ritual_of_doom_effect_SpellScript();
-    }
-};
-
 class spell_warl_seed_of_corruption : public SpellScriptLoader
 {
     public:
@@ -338,7 +311,7 @@ public:
                 int32 damage = int32(caster->CountPctFromMaxHealth(GetSpellInfo()->Effects[EFFECT_2].CalcValue()));
                 int32 mana = 0;
 
-                uint32 multiplier = 1.2f;
+                float multiplier = 1.2f;
 
                 // Should not appear in combat log
                 caster->ModifyHealth(-damage);
@@ -462,7 +435,6 @@ void AddSC_warlock_spell_scripts()
     new spell_warl_demonic_empowerment();
     new spell_warl_create_healthstone();
     new spell_warl_everlasting_affliction();
-    new spell_warl_ritual_of_doom_effect();
     new spell_warl_seed_of_corruption();
     new spell_warl_life_tap();
     new spell_warl_fear();

@@ -1541,12 +1541,12 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
         {
             // non fly unit don't must be in air
             // non swim unit must be at ground (mostly speedup, because it don't must be in water and water level check less fast
-            if (!((Creature const*)this)->canFly())
+            if (!ToCreature()->canFly())
             {
-                bool canSwim = ((Creature const*)this)->canSwim();
+                bool canSwim = ToCreature()->canSwim();
                 float ground_z = z;
                 float max_z = canSwim
-                    ? GetBaseMap()->GetWaterOrGroundLevel(x, y, z, &ground_z, !((Unit const*)this)->HasAuraType(SPELL_AURA_WATER_WALK))
+                    ? GetBaseMap()->GetWaterOrGroundLevel(x, y, z, &ground_z, !ToUnit()->HasAuraType(SPELL_AURA_WATER_WALK))
                     : ((ground_z = GetBaseMap()->GetHeight(x, y, z, true)));
                 if (max_z > INVALID_HEIGHT)
                 {
@@ -1567,10 +1567,10 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
         case TYPEID_PLAYER:
         {
             // for server controlled moves playr work same as creature (but it can always swim)
-            if (!((Player const*)this)->canFly())
+            if (!ToPlayer()->canFly())
             {
                 float ground_z = z;
-                float max_z = GetBaseMap()->GetWaterOrGroundLevel(x, y, z, &ground_z, !((Unit const*)this)->HasAuraType(SPELL_AURA_WATER_WALK));
+                float max_z = GetBaseMap()->GetWaterOrGroundLevel(x, y, z, &ground_z, !ToUnit()->HasAuraType(SPELL_AURA_WATER_WALK));
                 if (max_z > INVALID_HEIGHT)
                 {
                     if (z > max_z)
@@ -1805,11 +1805,15 @@ bool WorldObject::CanDetectStealthOf(WorldObject const* obj) const
 
         // Level difference: 5 point / level, starting from level 1.
         // There may be spells for this and the starting points too, but
-        //   not in the DBCs of the client.
+        // not in the DBCs of the client.
         detectionValue += int32(getLevelForTarget(obj) - 1) * 5;
 
         // Apply modifiers
         detectionValue += m_stealthDetect.GetValue(StealthType(i));
+        if (obj->isType(TYPEMASK_GAMEOBJECT))
+            if (Unit* owner = ((GameObject*)obj)->GetOwner())
+                detectionValue -= int32(owner->getLevelForTarget(this) - 1) * 5;
+
         detectionValue -= obj->m_stealth.GetValue(StealthType(i));
 
         // Calculate max distance
@@ -2433,7 +2437,7 @@ namespace Trinity
 
                 float x, y, z;
 
-                if (!c->isAlive() || c->HasUnitState(UNIT_STAT_ROOT | UNIT_STAT_STUNNED | UNIT_STAT_DISTRACTED) ||
+                if (!c->isAlive() || c->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED) ||
                     !c->GetMotionMaster()->GetDestination(x, y, z))
                 {
                     x = c->GetPositionX();
@@ -2501,7 +2505,7 @@ void WorldObject::GetNearPoint(WorldObject const* /*searcher*/, float &x, float 
 {
     GetNearPoint2D(x, y, distance2d+searcher_size, absAngle);
     z = GetPositionZ();
-    UpdateGroundPositionZ(x, y, z);
+    UpdateAllowedPositionZ(x, y, z);
 
     /*
     // if detection disabled, return first point

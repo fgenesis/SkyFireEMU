@@ -226,7 +226,6 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     //! Delete packet after processing by default
     bool deletePacket = true;
     //! To prevent infinite loop
-    bool delayedPackets = false;
     WorldPacket* firstDelayedPacket = NULL;
     //! If _recvQueue.peek() == firstDelayedPacket it means that in this Update call, we've processed all
     //! *properly timed* packets, and we're now at the part of the queue where we find
@@ -239,7 +238,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     {
         OpcodeHandler const &opHandle = opcodeTable[packet->GetOpcode()];
 
-		// Opcode display while only while debugging.
+        // Opcode display while only while debugging.
         sLog->outDebug(LOG_FILTER_OPCODES, "SESSION: Received opcode 0x%.4X (%s)", packet->GetOpcode(), packet->GetOpcode()>OPCODE_NOT_FOUND?"nf":LookupOpcodeName(packet->GetOpcode()));
 
         // !=NULL checked in WorldSocket
@@ -1010,14 +1009,7 @@ void WorldSession::SendAddonsInfo()
 
     uint32 count = 0;
     data << uint32(count);
-    /*for (uint32 i = 0; i < count; ++i)
-    {
-        uint32
-        string (16 bytes)
-        string (16 bytes)
-        uint32
-        uint32
-    }*/
+    data << uint32(0); // count for an unknown for loop
 
     SendPacket(&data);
 }

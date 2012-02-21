@@ -314,13 +314,14 @@ struct PvPInfo
 
 struct DuelInfo
 {
-    DuelInfo() : initiator(NULL), opponent(NULL), startTimer(0), startTime(0), outOfBound(0) {}
+    DuelInfo() : initiator(NULL), opponent(NULL), startTimer(0), startTime(0), outOfBound(0), isMounted(false) {}
 
     Player *initiator;
     Player *opponent;
     time_t startTimer;
     time_t startTime;
     time_t outOfBound;
+    bool isMounted;
 };
 
 struct Areas
@@ -1785,6 +1786,7 @@ class Player : public Unit, public GridObject<Player>
         void RemoveSpellCooldown(uint32 spell_id, bool update = false);
         void RemoveSpellCategoryCooldown(uint32 cat, bool update = false);
         void SendClearCooldown(uint32 spell_id, Unit* target);
+        void UpdateSpellCooldown(uint32 spell_id, int32 amount);
 
         GlobalCooldownMgr& GetGlobalCooldownMgr() { return m_GlobalCooldownMgr; }
 
@@ -1848,7 +1850,7 @@ class Player : public Unit, public GridObject<Player>
         void SetContestedPvPTimer(uint32 newTime) {_contestedPvPTimer = newTime;}
         void ResetContestedPvP()
         {
-            ClearUnitState(UNIT_STAT_ATTACK_PLAYER);
+            ClearUnitState(UNIT_STATE_ATTACK_PLAYER);
             RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_CONTESTED_PVP);
             _contestedPvPTimer = 0;
         }
@@ -1958,8 +1960,8 @@ class Player : public Unit, public GridObject<Player>
         void UpdateMeleeHitChances();
         void UpdateRangedHitChances();
         void UpdateSpellHitChances();
+        void UpdateMasteryPercentage();
 
-        void UpdateMastery();
         float GetMasteryPoints() { return CalculateMasteryPoints(_baseRatingValue[CR_MASTERY]); }
         float CalculateMasteryPoints(int32 curr_rating)  { return float(curr_rating * 0.0055779569892473); }
         int32 CalculateMasteryRating(float curr_mastery) { return int32(curr_mastery / 0.0055779569892473); }
@@ -2125,6 +2127,7 @@ class Player : public Unit, public GridObject<Player>
         void SetCanParry(bool value);
         bool CanBlock() const { return _canBlock; }
         void SetCanBlock(bool value);
+        bool CanMastery() const { return HasAuraType(SPELL_AURA_MASTERY); }
         bool CanTitanGrip() const { return _canTitanGrip; }
         void SetCanTitanGrip(bool value) { _canTitanGrip = value; }
         bool CanTameExoticPets() const { return isGameMaster() || HasAuraType(SPELL_AURA_ALLOW_TAME_PET_TYPE); }

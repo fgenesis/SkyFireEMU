@@ -534,7 +534,7 @@ bool SpellEffectInfo::IsAura(AuraType aura) const
     return IsAura() && ApplyAuraName == aura;
 }
 
-bool SpellEffectInfo::IsArea() const
+bool SpellEffectInfo::IsTargetingArea() const
 {
     return TargetA.IsArea() || TargetB.IsArea();
 }
@@ -575,6 +575,9 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
     float basePointsPerLevel = RealPointsPerLevel;
     int32 basePoints = bp ? *bp : BasePoints;
     int32 randomPoints = int32(DieSides);
+
+    if (!_spellInfo)
+        return 0;
 
     float maxPoints = 0.00f;
     float comboPointScaling = 0.00f;
@@ -651,9 +654,9 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
                 ApplyAuraName != SPELL_AURA_MOD_SPEED_NOT_STACK &&
                 ApplyAuraName != SPELL_AURA_MOD_INCREASE_SPEED &&
                 ApplyAuraName != SPELL_AURA_MOD_DECREASE_SPEED)
-                //there are many more: slow speed, -healing pct
+                // there are many more: slow speed, -healing pct
             value *= 0.25f * exp(caster->getLevel() * (70 - _spellInfo->SpellLevel) / 1000.0f);
-            //value = int32(value * (int32)getLevel() / (int32)(_spellInfo->spellLevel ? _spellInfo->spellLevel : 1));
+            // value = int32(value * (int32)getLevel() / (int32)(_spellInfo->spellLevel ? _spellInfo->spellLevel : 1));
     }
 
     return int32(value);
@@ -1007,7 +1010,7 @@ void SpellInfo::LoadSpellAddons()
     ChannelInterruptFlags = SpellInterrupts ? SpellInterrupts->ChannelInterruptFlags : 0;
     InterruptFlags = SpellInterrupts ? SpellInterrupts->InterruptFlags : 0;
 
-    SpellLevelsEntry const* SpellLevels  = GetSpellLevels();
+    SpellLevelsEntry const* SpellLevels = GetSpellLevels();
     BaseLevel = SpellLevels ? SpellLevels->baseLevel : 0;
     MaxLevel = SpellLevels ? SpellLevels->maxLevel : 0;
     SpellLevel = SpellLevels ? SpellLevels->spellLevel : 0;
@@ -1017,7 +1020,7 @@ void SpellInfo::LoadSpellAddons()
     ManaCostPerlevel = SpellPower ? SpellPower->manaCostPerlevel : 0;
     ManaCostPercentage = SpellPower ? SpellPower->ManaCostPercentage : 0;
     ManaPerSecond = SpellPower ? SpellPower->manaPerSecond : 0;
-    //4.0 REMOVED:ManaPerSecondPerLevel = 0;
+    // 4.0 REMOVED:ManaPerSecondPerLevel = 0;
 
     SpellReagentsEntry const* SpellReagents = GetSpellReagents();
     for (uint8 i = 0; i < MAX_SPELL_REAGENTS; ++i)
@@ -1269,10 +1272,19 @@ bool SpellInfo::IsAbilityOfSkillType(uint32 skillType) const
     return false;
 }
 
-bool SpellInfo::IsAOE() const
+bool SpellInfo::IsAffectingArea() const
 {
     for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-        if (Effects[i].IsEffect() && Effects[i].IsArea())
+        if (Effects[i].IsEffect() && (Effects[i].IsTargetingArea() || Effects[i].IsEffect(SPELL_EFFECT_PERSISTENT_AREA_AURA) || Effects[i].IsAreaAuraEffect()))
+            return true;
+    return false;
+}
+
+// checks if spell targets are selected from area, doesn't include spell effects in check (like area wide auras for example)
+bool SpellInfo::IsTargetingArea() const
+{
+    for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+        if (Effects[i].IsEffect() && Effects[i].IsTargetingArea())
             return true;
     return false;
 }
@@ -1803,10 +1815,10 @@ SpellCastResult SpellInfo::CheckTarget(Unit const* caster, Unit const* target, b
         return SPELL_FAILED_BAD_TARGETS;
 
     // checked in Unit::IsValidAttack/AssistTarget, shouldn't be checked for ENTRY targets
-    //if (!(AttributesEx6 & SPELL_ATTR6_CAN_TARGET_UNTARGETABLE) && target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
+    // if (!(AttributesEx6 & SPELL_ATTR6_CAN_TARGET_UNTARGETABLE) && target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
     //    return SPELL_FAILED_BAD_TARGETS;
 
-    //if (!(AttributesEx6 & SPELL_ATTR6_CAN_TARGET_POSSESSED_FRIENDS)
+    // if (!(AttributesEx6 & SPELL_ATTR6_CAN_TARGET_POSSESSED_FRIENDS)
 
     if (!CheckTargetCreatureType(target))
     {
@@ -1827,7 +1839,7 @@ SpellCastResult SpellInfo::CheckTarget(Unit const* caster, Unit const* target, b
     }
 
     // not allow casting on flying player
-    if (target->HasUnitState(UNIT_STAT_IN_FLIGHT))
+    if (target->HasUnitState(UNIT_STATE_IN_FLIGHT))
         return SPELL_FAILED_BAD_TARGETS;
 
     if (TargetAuraState && !target->HasAuraState(AuraStateType(TargetAuraState), this, caster))
@@ -2155,7 +2167,7 @@ SpellSpecificType SpellInfo::GetSpellSpecific() const
             if (SpellFamilyFlags[1] & 0x20000020 || SpellFamilyFlags[2] & 0x00000010)
                 return SPELL_SPECIFIC_WARLOCK_ARMOR;
 
-            //seed of corruption and corruption
+            // seed of corruption and corruption
             if (SpellFamilyFlags[1] & 0x10 || SpellFamilyFlags[0] & 0x2)
                 return SPELL_SPECIFIC_WARLOCK_CORRUPTION;
             break;
@@ -2631,7 +2643,7 @@ bool SpellInfo::_IsPositiveEffect(uint8 effIndex, bool deep) const
                 case SPELL_AURA_PROC_TRIGGER_SPELL:
                     // many positive auras have negative triggered spells at damage for example and this not make it negative (it can be canceled for example)
                     break;
-                case SPELL_AURA_MOD_STUN:                   //have positive and negative spells, we can't sort its correctly at this moment.
+                case SPELL_AURA_MOD_STUN:                   // have positive and negative spells, we can't sort its correctly at this moment.
                     if (effIndex == 0 && Effects[1].Effect == 0 && Effects[2].Effect == 0)
                         return false;                       // but all single stun aura spells is negative
                     break;

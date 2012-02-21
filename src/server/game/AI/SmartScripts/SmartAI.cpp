@@ -47,7 +47,7 @@ SmartAI::SmartAI(Creature* c) : CreatureAI(c)
 
     // spawn in run mode
     me->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
-    mRun = true;
+    mRun = false;
 
     me->GetPosition(&mLastOOCPos);
 
@@ -69,6 +69,7 @@ SmartAI::SmartAI(Creature* c) : CreatureAI(c)
     mFollowCredit = 0;
     mFollowArrivedEntry = 0;
     mFollowCreditType = 0;
+    mInvinceabilityHpLevel = 0;
 }
 
 void SmartAI::UpdateDespawn(const uint32 diff)
@@ -90,7 +91,7 @@ void SmartAI::UpdateDespawn(const uint32 diff)
 void SmartAI::Reset()
 {
     if (!HasEscortState(SMART_ESCORT_ESCORTING))//dont mess up escort movement after combat
-        SetRun(true);
+        SetRun(mRun);
     GetScript()->OnReset();
 }
 
@@ -448,6 +449,7 @@ void SmartAI::EnterEvadeMode()
         return;
 
     RemoveAuras();
+
     me->DeleteThreatList();
     me->CombatStop(true);
     me->LoadCreaturesAddon();
@@ -569,6 +571,7 @@ void SmartAI::JustRespawned()
     mFollowArrivedTimer = 1000;
     mFollowArrivedEntry = 0;
     mFollowCreditType = 0;
+    mInvinceabilityHpLevel = 0;
 }
 
 int SmartAI::Permissible(const Creature* creature)
@@ -635,6 +638,8 @@ void SmartAI::SpellHitTarget(Unit* target, const SpellInfo* spellInfo)
 void SmartAI::DamageTaken(Unit* doneBy, uint32& damage)
 {
     GetScript()->ProcessEventsFor(SMART_EVENT_DAMAGED, doneBy, damage);
+    if ((me->GetHealth() - damage) <= mInvinceabilityHpLevel)
+        damage -= mInvinceabilityHpLevel;
 }
 
 void SmartAI::HealReceived(Unit* doneBy, uint32& addhealth)
@@ -935,9 +940,9 @@ void SmartGameObjectAI::OnGameEvent(bool start, uint16 eventId)
     GetScript()->ProcessEventsFor(start ? SMART_EVENT_GAME_EVENT_START : SMART_EVENT_GAME_EVENT_END, NULL, eventId);
 }
 
-void SmartGameObjectAI::OnStateChanged(uint32 state)
+void SmartGameObjectAI::OnStateChanged(uint32 state, Unit* unit)
 {
-    GetScript()->ProcessEventsFor(SMART_EVENT_GO_STATE_CHANGED, NULL, state);
+    GetScript()->ProcessEventsFor(SMART_EVENT_GO_STATE_CHANGED, unit, state);
 }
 
 class SmartTrigger : public AreaTriggerScript

@@ -1590,7 +1590,7 @@ void Player::Update(uint32 p_time)
 
     GetAchievementMgr().UpdateTimedAchievements(p_time);
 
-    if (HasUnitState(UNIT_STAT_MELEE_ATTACKING) && !HasUnitState(UNIT_STAT_CASTING))
+    if (HasUnitState(UNIT_STATE_MELEE_ATTACKING) && !HasUnitState(UNIT_STATE_CASTING))
     {
         if (Unit *victim = getVictim())
         {
@@ -2334,14 +2334,9 @@ bool Player::TeleportToBGEntryPoint()
     if (_bgData.joinPos.m_mapId == MAPID_INVALID)
         return false;
 
-    Group* group = GetGroup();
-    if (group && group->isLFGGroup() && group->GetMembersCount() == 1)
-        group->Disband();
-    else
-        ScheduleDelayedOperation(DELAYED_BG_GROUP_RESTORE);
-
     ScheduleDelayedOperation(DELAYED_BG_MOUNT_RESTORE);
     ScheduleDelayedOperation(DELAYED_BG_TAXI_RESTORE);
+    ScheduleDelayedOperation(DELAYED_BG_GROUP_RESTORE);
     return TeleportTo(_bgData.joinPos);
 }
 
@@ -3226,6 +3221,8 @@ void Player::InitStatsForLevel(bool reapplyMods)
         SetUInt32Value(index, 0);
 
     SetUInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, 0);
+    SetFloatValue(PLAYER_FIELD_MOD_HEALING_PCT, 1.0f);
+    SetFloatValue(PLAYER_FIELD_MOD_HEALING_DONE_PCT, 1.0f);
     for (uint8 i = 0; i < 7; ++i)
     {
         SetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG+i, 0);
@@ -3306,7 +3303,7 @@ void Player::InitStatsForLevel(bool reapplyMods)
     // cleanup unit flags (will be re-applied if need at aura load).
     RemoveFlag(UNIT_FIELD_FLAGS,
         UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_NOT_ATTACKABLE_1 |
-        UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_PASSIVE  | UNIT_FLAG_LOOTING          |
+        UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC  | UNIT_FLAG_LOOTING          |
         UNIT_FLAG_PET_IN_COMBAT  | UNIT_FLAG_SILENCED     | UNIT_FLAG_PACIFIED         |
         UNIT_FLAG_STUNNED        | UNIT_FLAG_IN_COMBAT    | UNIT_FLAG_DISARMED         |
         UNIT_FLAG_CONFUSED       | UNIT_FLAG_FLEEING      | UNIT_FLAG_NOT_SELECTABLE   |
@@ -4491,12 +4488,15 @@ bool Player::resetTalents(bool no_cost)
             // skip non-existant talent ranks
             if (talentInfo->RankID[rank] == 0)
                 continue;
+        const SpellInfo* _spellEntry = sSpellMgr->GetSpellInfo(talentInfo->RankID[rank]);
+            if (!_spellEntry)
+                continue;
             removeSpell(talentInfo->RankID[rank], true);
-            if (const SpellInfo *_spellEntry = sSpellMgr->GetSpellInfo(talentInfo->RankID[rank]))
-                for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)                  // search through the SpellInfo for valid trigger spells
-                    if (_spellEntry->Effects[i].TriggerSpell > 0 && _spellEntry->Effects[i].Effect == SPELL_EFFECT_LEARN_SPELL)
-                        removeSpell(_spellEntry->Effects[i].TriggerSpell, true); // and remove any spells that the talent teaches
-            // if this talent rank can be found in the PlayerTalentMap, mark the talent as removed so it gets deleted
+        // search for spells that the talent teaches and unlearn them
+            for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+                if (_spellEntry->Effects[i].TriggerSpell > 0 && _spellEntry->Effects[i].Effect == SPELL_EFFECT_LEARN_SPELL)
+                    removeSpell(_spellEntry->Effects[i].TriggerSpell, true);
+                // if this talent rank can be found in the PlayerTalentMap, mark the talent as removed so it gets deleted
             PlayerTalentMap::iterator plrTalent = _talents[_activeSpec]->find(talentInfo->RankID[rank]);
             if (plrTalent != _talents[_activeSpec]->end())
                 plrTalent->second->state = PLAYERSPELL_REMOVED;
@@ -4585,6 +4585,8 @@ void Player::InitVisibleBits()
     updateVisualBits.SetBit(OBJECT_FIELD_GUID);
     updateVisualBits.SetBit(OBJECT_FIELD_TYPE);
     updateVisualBits.SetBit(OBJECT_FIELD_ENTRY);
+    updateVisualBits.SetBit(OBJECT_FIELD_DATA + 0);
+    updateVisualBits.SetBit(OBJECT_FIELD_DATA + 1);
     updateVisualBits.SetBit(OBJECT_FIELD_SCALE_X);
     updateVisualBits.SetBit(UNIT_FIELD_CHARM + 0);
     updateVisualBits.SetBit(UNIT_FIELD_CHARM + 1);
@@ -6065,7 +6067,7 @@ void Player::UpdateRating(CombatRating cr)
             }
             break;
         case CR_MASTERY:                                    // Implemented in Player::UpdateMastery
-            UpdateMastery();
+            UpdateMasteryPercentage();
             break;
         case CR_ARMOR_PENETRATION:
             if (affectStats)
@@ -9305,7 +9307,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
                 }
             }
 
-            go->SetLootState(GO_ACTIVATED);
+            go->SetLootState(GO_ACTIVATED, this);
         }
 
         if (go->getLootState() == GO_ACTIVATED)
@@ -11980,7 +11982,7 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16 &dest, Item *pItem, bool
             {
                 // May be here should be more stronger checks; STUNNED checked
                 // ROOT, CONFUSED, DISTRACTED, FLEEING this needs to be checked.
-                if (HasUnitState(UNIT_STAT_STUNNED))
+                if (HasUnitState(UNIT_STATE_STUNNED))
                     return EQUIP_ERR_YOU_ARE_STUNNED;
 
                 // do not allow equipping gear except weapons, offhands, projectiles, relics in
@@ -12568,7 +12570,7 @@ Item* Player::StoreItem(ItemPosCountVec const& dest, Item* pItem, bool update)
 
         lastItem = _StoreItem(pos, pItem, count, true, update);
     }
-    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM, entry);
+    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM, entry, 1);
 
     if (Guild* guild = sGuildMgr->GetGuildById(GetGuildId()))
         guild->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM, this, entry, 1);
@@ -13197,6 +13199,46 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
                         pItem->SendUpdateToPlayer(this);
                     pItem->SetState(ITEM_CHANGED, this);
                     return;
+                }
+            }
+        }
+    }
+
+    // in bank
+    for (uint8 i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; i++)
+    {
+        if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+        {
+            if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+            {
+                if (pItem->GetCount() + remcount <= count)
+                {
+                    remcount += pItem->GetCount();
+                    DestroyItem(INVENTORY_SLOT_BAG_0, i, update);
+                    if (remcount >= count)
+                        return;
+                }
+            }
+        }
+    }
+
+    // in bank bags
+    for (uint8 i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; i++)
+    {
+        if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+        {
+            for (uint32 j = 0; j < pBag->GetBagSize(); j++)
+            {
+                Item* pItem = GetItemByPos(i, j);
+                if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+                {
+                    if (pItem->GetCount() + remcount <= count)
+                    {
+                        remcount += pItem->GetCount();
+                        DestroyItem(i, j, update);
+                        if (remcount >= count)
+                            return;
+                    }
                 }
             }
         }
@@ -14866,7 +14908,7 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
             break;
         case GOSSIP_OPTION_UNLEARNTALENTS:
             PlayerTalkClass->SendCloseGossip();
-            source->ToCreature()->CastSpell(this, 46331, true); // Trainer: Untrain Talents
+            SendTalentWipeConfirm(guid);
             break;
         case GOSSIP_OPTION_UNLEARNPETTALENTS:
             PlayerTalkClass->SendCloseGossip();
@@ -15370,7 +15412,8 @@ bool Player::CanRewardQuest(Quest const *quest, uint32 reward, bool msg)
 void Player::AddQuest(Quest const *quest, Object *questGiver)
 {
     uint16 log_slot = FindQuestSlot(0);
-    ASSERT(log_slot < MAX_QUEST_LOG_SIZE);
+    if (log_slot >= MAX_QUEST_LOG_SIZE) // Player does not have any free slot in the quest log
+        return;
 
     uint32 quest_id = quest->GetQuestId();
 
@@ -19868,24 +19911,24 @@ void Player::_SaveStats(SQLTransaction& trans)
     ss << "INSERT INTO character_stats (guid, maxhealth, maxpower1, maxpower2, maxpower3, maxpower4, maxpower5, maxpower6, maxpower7, maxpower8, maxpower9, maxpower10, "
     "strength, agility, stamina, intellect, spirit, armor, resHoly, resFire, resNature, resFrost, resShadow, resArcane, "
     "blockPct, dodgePct, parryPct, critPct, rangedCritPct, spellCritPct, attackPower, rangedAttackPower, spellPower, resilience) VALUES ("
-    << GetGUIDLow() << ', '
-    << GetMaxHealth() << ', ';
+    << GetGUIDLow() << ','
+    << GetMaxHealth() << ',';
     for (uint8 i = 0; i < MAX_POWERS; ++i)
-        ss << GetMaxPower(Powers(i)) << ', ';
+        ss << GetMaxPower(Powers(i)) << ',';
     for (uint8 i = 0; i < MAX_STATS; ++i)
-        ss << GetStat(Stats(i)) << ', ';
+        ss << GetStat(Stats(i)) << ',';
     // armor + school resistances
     for (int i = 0; i < MAX_SPELL_SCHOOL; ++i)
-        ss << GetResistance(SpellSchools(i)) << ', ';
-    ss << GetFloatValue(PLAYER_BLOCK_PERCENTAGE) << ', '
-            << GetFloatValue(PLAYER_DODGE_PERCENTAGE) << ', '
-            << GetFloatValue(PLAYER_PARRY_PERCENTAGE) << ', '
-            << GetFloatValue(PLAYER_CRIT_PERCENTAGE) << ', '
-            << GetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE) << ', '
-            << GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1) << ', '
-            << GetUInt32Value(UNIT_FIELD_ATTACK_POWER) << ', '
-            << GetUInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) << ', '
-            << GetBaseSpellPowerBonus() << ')';
+        ss << GetResistance(SpellSchools(i)) << ',';
+    ss << GetFloatValue(PLAYER_BLOCK_PERCENTAGE) << ','
+        << GetFloatValue(PLAYER_DODGE_PERCENTAGE) << ','
+        << GetFloatValue(PLAYER_PARRY_PERCENTAGE) << ','
+        << GetFloatValue(PLAYER_CRIT_PERCENTAGE) << ','
+        << GetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE) << ','
+        << GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1) << ','
+        << GetUInt32Value(UNIT_FIELD_ATTACK_POWER) << ','
+        << GetUInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) << ','
+        << GetBaseSpellPowerBonus() << ')';
     trans->Append(ss.str().c_str());
 }
 
@@ -20773,7 +20816,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
         return false;
 
     // not let cheating with start flight in time of logout process || while in combat || has type state: stunned || has type state: root
-    if (GetSession()->isLogingOut() || isInCombat() || HasUnitState(UNIT_STAT_STUNNED) || HasUnitState(UNIT_STAT_ROOT))
+    if (GetSession()->isLogingOut() || isInCombat() || HasUnitState(UNIT_STATE_STUNNED) || HasUnitState(UNIT_STATE_ROOT))
     {
         WorldPacket data(SMSG_ACTIVATETAXIREPLY, 4);
         data << uint32(ERR_TAXIPLAYERBUSY);
@@ -21171,8 +21214,6 @@ inline bool Player::_StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 c
         SendEquipError(msg, NULL, NULL, item);
         return false;
     }
-
-    ModifyMoney(-price);
 
     ModifyMoney(-price);
 
@@ -22057,7 +22098,7 @@ void Player::SendInitialVisiblePackets(Unit* target)
     SendAurasForTarget(target);
     if (target->isAlive())
     {
-        if (target->HasUnitState(UNIT_STAT_MELEE_ATTACKING) && target->getVictim())
+        if (target->HasUnitState(UNIT_STATE_MELEE_ATTACKING) && target->getVictim())
             target->SendMeleeAttackStart(target->getVictim());
     }
 }
@@ -25130,6 +25171,28 @@ void Player::SendClearCooldown(uint32 spell_id, Unit* target)
     data << uint32(spell_id);
     data << uint64(target->GetGUID());
     SendDirectMessage(&data);
+}
+
+void Player::UpdateSpellCooldown(uint32 spell_id, int32 amount)
+{
+    uint32 curCooldown = GetSpellCooldownDelay(spell_id);
+    if (amount < 0)
+    {
+        if (curCooldown <= (curCooldown + amount))
+            curCooldown = 0;
+        else
+            curCooldown -= amount;
+    }
+    else // if (amount > 0)
+        curCooldown += amount;
+
+    AddSpellCooldown(spell_id, 0, uint32(time(NULL) + curCooldown));
+
+    WorldPacket data(SMSG_MODIFY_COOLDOWN, 4+8+4);
+    data << uint32(spell_id);               // Spell ID
+    data << uint64(GetGUID());              // Player GUID
+    data << int32(amount * 1000);           // Cooldown mod in milliseconds
+    GetSession()->SendPacket(&data);
 }
 
 void Player::ResetMap()
